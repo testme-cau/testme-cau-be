@@ -17,6 +17,9 @@ requests==2.32.3
 # 날짜/시간 처리
 python-dateutil==2.9.0
 
-# AI Integration (OpenAI GPT-5)
-# openai==1.x.x  # Add when implementing GPT integration
+# AI Integration (OpenAI)
+openai>=1.0.0
+
+# PDF Processing
+pypdf2==3.0.1
 
