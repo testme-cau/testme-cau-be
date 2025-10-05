@@ -39,6 +39,12 @@ instance/
 .env.*.local
 .flaskenv
 
+# Firebase
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+firebase-config.json
+
 # IDE
 .vscode/
 .idea/

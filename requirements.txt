@@ -12,8 +12,9 @@ Flask-Migrate==4.0.7
 # 환경 변수 관리
 python-dotenv==1.0.1
 
-# JWT 인증
+# 인증
 Flask-JWT-Extended==4.6.0
+firebase-admin==6.5.0
 
 # 유효성 검사
 Flask-Marshmallow==1.2.1
