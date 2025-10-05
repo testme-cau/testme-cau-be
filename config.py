@@ -1,0 +1,54 @@
+"""
+Flask application configuration
+"""
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+class Config:
+    """Base configuration"""
+    
+    # Flask
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+    DEBUG = FLASK_ENV == 'development'
+    
+    # Server
+    HOST = os.getenv('HOST', '0.0.0.0')
+    PORT = int(os.getenv('PORT', 5000))
+    
+    # Firebase
+    FIREBASE_STORAGE_BUCKET = os.getenv('FIREBASE_STORAGE_BUCKET')
+    FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', 'serviceAccountKey.json')
+    
+    # OpenAI
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    
+    # Admin Authentication
+    ADMIN_ID = os.getenv('ADMIN_ID', 'admin')
+    ADMIN_PW = os.getenv('ADMIN_PW', 'admin')
+    
+    # CORS
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
+
+
+class DevelopmentConfig(Config):
+    """Development configuration"""
+    DEBUG = True
+
+
+class ProductionConfig(Config):
+    """Production configuration"""
+    DEBUG = False
+
+
+# Configuration dictionary
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig
+}
+
