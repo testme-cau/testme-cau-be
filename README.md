@@ -57,10 +57,19 @@ Create a `.env` file in the root directory:
 ```env
 FLASK_APP=app.py
 FLASK_ENV=development
+
+# OpenAI API
 OPENAI_API_KEY=your-openai-api-key-here
+
+# Firebase
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 ```
 
-5. **Run the development server**
+5. **Set up Firebase credentials**
+
+Download your Firebase service account key JSON file from Firebase Console and save it as `serviceAccountKey.json` in the project root (this file is ignored by git).
+
+6. **Run the development server**
 
 ```bash
 flask run
@@ -87,10 +96,12 @@ be/
 │   ├── services/      # Business logic (GPT service, PDF processor, etc.)
 │   └── utils/         # Utility functions
 │
-├── uploads/           # Uploaded PDF files
 ├── public/            # Static files
 ├── migrations/        # Database migrations
+├── serviceAccountKey.json  # Firebase service account key (not in git)
 └── venv/             # Virtual environment (not in git)
+
+Note: PDF files are stored in Firebase Cloud Storage, not locally.
 ```
 
 ## Development Status
