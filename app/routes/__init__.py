@@ -13,5 +13,5 @@ admin_bp = Blueprint('admin', __name__)
 api_bp = Blueprint('api', __name__)
 
 # Import routes to register them with blueprints
-from app.routes import main, admin, api
+from app.routes import main, admin, api, pdf
 
