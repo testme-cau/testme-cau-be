@@ -112,7 +112,7 @@ be/
 ├── serviceAccountKey.json  # Firebase service account key (not in git)
 └── venv/             # Virtual environment (not in git)
 
-Note: 
+Note:
 - PDF files are stored in Firebase Cloud Storage
 - Data is stored in Cloud Firestore (NoSQL)
 ```
@@ -131,6 +131,7 @@ For development and testing purposes, an admin web interface is available at `/a
 ### Purpose
 
 The admin page allows you to:
+
 - Test API functionality without Android app
 - Upload PDFs and generate exams via web interface
 - Test Firebase authentication flow
