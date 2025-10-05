@@ -18,7 +18,7 @@
 - **Framework**: Flask 3.0.3
 - **Authentication**: Firebase OAuth 2.0 (with Firebase Admin SDK)
 - **Database**: Cloud Firestore (NoSQL document database)
-- **Storage**: Firebase Cloud Storage (PDF file storage)
+- **Storage**: Local file system (PDF file storage in `uploads/` directory)
 - **AI Integration**: OpenAI GPT-5 API
 - **Python**: 3.8+
 
@@ -66,11 +66,17 @@ FLASK_APP=app.py
 FLASK_ENV=development
 SECRET_KEY=your-secret-key-here
 
+# Server Configuration
+HOST=0.0.0.0
+PORT=5000
+SERVER_URL=http://localhost:5000
+
+# File Upload (local storage)
+UPLOAD_FOLDER=uploads
+MAX_FILE_SIZE=16777216
+
 # OpenAI API
 OPENAI_API_KEY=your-openai-api-key-here
-
-# Firebase
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 
 # Admin Page (for web testing)
 ADMIN_ID=admin
@@ -108,12 +114,14 @@ be/
 │   ├── services/      # Business logic (GPT service, Firestore, PDF processor, etc.)
 │   └── utils/         # Utility functions
 │
+├── uploads/           # Uploaded PDF files (not in git)
 ├── public/            # Static files
 ├── serviceAccountKey.json  # Firebase service account key (not in git)
 └── venv/             # Virtual environment (not in git)
 
 Note:
-- PDF files are stored in Firebase Cloud Storage
+- PDF files are stored locally in `uploads/` directory
+- Files are accessible via URL: `{SERVER_URL}/uploads/{user_id}/{filename}`
 - Data is stored in Cloud Firestore (NoSQL)
 ```
 

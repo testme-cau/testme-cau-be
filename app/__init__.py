@@ -4,7 +4,7 @@ Flask application factory
 import os
 import firebase_admin
 from firebase_admin import credentials
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from config import config
 
@@ -26,6 +26,12 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
     app.config.from_object(config.get(config_name, config['default']))
+    
+    # Create upload folder if it doesn't exist
+    upload_folder = app.config['UPLOAD_FOLDER']
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+        app.logger.info(f'Created upload folder: {upload_folder}')
     
     # Initialize CORS
     CORS(app, origins=app.config['CORS_ORIGINS'])
