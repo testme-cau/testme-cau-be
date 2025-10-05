@@ -17,6 +17,7 @@
 
 - **Framework**: Flask 3.0.3
 - **Authentication**: Firebase OAuth 2.0 (with Firebase Admin SDK)
+- **Storage**: Firebase Cloud Storage (PDF file storage)
 - **AI Integration**: OpenAI GPT-5 API
 - **Python**: 3.8+
 
