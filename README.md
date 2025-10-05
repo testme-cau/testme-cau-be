@@ -17,6 +17,7 @@
 
 - **Framework**: Flask 3.0.3
 - **Authentication**: Firebase OAuth 2.0 (with Firebase Admin SDK)
+- **Database**: Cloud Firestore (NoSQL document database)
 - **Storage**: Firebase Cloud Storage (PDF file storage)
 - **AI Integration**: OpenAI GPT-5 API
 - **Python**: 3.8+
@@ -91,17 +92,17 @@ be/
 │
 ├── app/               # Main application package
 │   ├── __init__.py
-│   ├── models/        # Database models
 │   ├── routes/        # API endpoints
-│   ├── services/      # Business logic (GPT service, PDF processor, etc.)
+│   ├── services/      # Business logic (GPT service, Firestore, PDF processor, etc.)
 │   └── utils/         # Utility functions
 │
 ├── public/            # Static files
-├── migrations/        # Database migrations
 ├── serviceAccountKey.json  # Firebase service account key (not in git)
 └── venv/             # Virtual environment (not in git)
 
-Note: PDF files are stored in Firebase Cloud Storage, not locally.
+Note: 
+- PDF files are stored in Firebase Cloud Storage
+- Data is stored in Cloud Firestore (NoSQL)
 ```
 
 ## Development Status

@@ -29,9 +29,6 @@ virtualenv/
 # Flask
 instance/
 .webassets-cache
-*.db
-*.sqlite
-*.sqlite3
 
 # 환경 변수
 .env

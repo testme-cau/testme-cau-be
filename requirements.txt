@@ -5,20 +5,11 @@ Werkzeug==3.0.3
 # CORS 처리
 Flask-CORS==4.0.1
 
-# 데이터베이스
-Flask-SQLAlchemy==3.1.1
-Flask-Migrate==4.0.7
-
 # 환경 변수 관리
 python-dotenv==1.0.1
 
-# 인증
-Flask-JWT-Extended==4.6.0
+# Firebase (Authentication, Firestore, Storage)
 firebase-admin==6.5.0
-
-# 유효성 검사
-Flask-Marshmallow==1.2.1
-marshmallow-sqlalchemy==1.0.0
 
 # HTTP 요청
 requests==2.32.3
@@ -26,6 +17,6 @@ requests==2.32.3
 # 날짜/시간 처리
 python-dateutil==2.9.0
 
-# 비밀번호 해싱
-bcrypt==4.2.0
+# AI Integration (OpenAI GPT-5)
+# openai==1.x.x  # Add when implementing GPT integration
 
