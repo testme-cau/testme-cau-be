@@ -53,17 +53,28 @@ pip install -r requirements.txt
 
 4. **Set up environment variables**
 
-Create a `.env` file in the root directory:
+Copy `.env.example` to `.env` and fill in your credentials:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual values:
 
 ```env
 FLASK_APP=app.py
 FLASK_ENV=development
+SECRET_KEY=your-secret-key-here
 
 # OpenAI API
 OPENAI_API_KEY=your-openai-api-key-here
 
 # Firebase
 FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+
+# Admin Page (for web testing)
+ADMIN_ID=admin
+ADMIN_PW=your-secure-password
 ```
 
 5. **Set up Firebase credentials**
@@ -85,7 +96,8 @@ be/
 ├── app.py              # Flask application entry point
 ├── config.py           # Configuration settings
 ├── requirements.txt    # Python dependencies
-├── .env               # Environment variables
+├── .env               # Environment variables (not in git)
+├── .env.example       # Environment variables template
 ├── .gitignore         # Git ignore rules
 ├── LICENSE            # MIT License
 ├── README.md          # Project documentation
@@ -104,6 +116,27 @@ Note:
 - PDF files are stored in Firebase Cloud Storage
 - Data is stored in Cloud Firestore (NoSQL)
 ```
+
+## Admin Page
+
+For development and testing purposes, an admin web interface is available at `/admin-page`.
+
+### Access
+
+1. Navigate to `http://localhost:5000/admin-page`
+2. Login with credentials set in `.env`:
+   - **Admin ID**: Value of `ADMIN_ID`
+   - **Admin PW**: Value of `ADMIN_PW`
+
+### Purpose
+
+The admin page allows you to:
+- Test API functionality without Android app
+- Upload PDFs and generate exams via web interface
+- Test Firebase authentication flow
+- Debug and verify backend operations
+
+**Note**: This is for development only. Do not expose admin credentials in production.
 
 ## Development Status
 

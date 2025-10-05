@@ -36,6 +36,9 @@ instance/
 .env.*.local
 .flaskenv
 
+# Keep .env.example for reference
+!.env.example
+
 # Firebase
 serviceAccountKey.json
 firebase-adminsdk-*.json
