@@ -79,10 +79,15 @@ MAX_FILE_SIZE=16777216
 # Firebase Storage
 FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 
+# Firebase Web SDK (for Google OAuth login on admin page)
+FIREBASE_API_KEY=your-firebase-api-key
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+
 # OpenAI API
 OPENAI_API_KEY=your-openai-api-key-here
 
-# Admin Page (for web testing)
+# Admin Page (for web testing - legacy, OAuth recommended)
 ADMIN_ID=admin
 ADMIN_PW=your-secure-password
 ```
@@ -136,25 +141,46 @@ Users authenticate through Firebase OAuth 2.0 in the Android app. All API endpoi
 
 ### Admin Login (Web Interface)
 
-For development and testing purposes, an admin web interface is available at `/admin-page`.
+For development and testing purposes, an admin web interface with **Google OAuth 2.0** is available at `/admin-page`.
 
 #### Access
 
 1. Navigate to `http://localhost:5000/admin-page`
-2. Login with credentials set in `.env`:
-   - **Admin ID**: Value of `ADMIN_ID` (default: `admin`)
-   - **Admin PW**: Value of `ADMIN_PW` (default: `admin`)
+2. Click **"Sign in with Google"** button
+3. Authenticate with your Google account via Firebase
+4. Access the dashboard with full API functionality
+
+#### Firebase Configuration
+
+To enable Google OAuth on the admin page, you need to configure Firebase Web SDK:
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Select your project
+3. Navigate to **Project Settings** → **General**
+4. Scroll to **Your apps** and select/add a Web app
+5. Copy the configuration values to your `.env`:
+   - `FIREBASE_API_KEY`
+   - `FIREBASE_AUTH_DOMAIN`
+   - `FIREBASE_PROJECT_ID`
+6. Enable **Google Sign-In** in **Authentication** → **Sign-in method**
 
 #### Features
 
 The admin page allows you to:
 
-- Test API functionality without Android app
-- Upload PDFs and generate exams via web interface
-- Test Firebase authentication flow
-- Debug and verify backend operations
+- **Authenticate** with real Firebase Google OAuth 2.0
+- **Upload PDFs** and generate exams via web interface
+- **Test API** functionality without Android app
+- **Debug** backend operations with real Firebase tokens
 
-**Note**: Admin login is separate from Firebase OAuth and is only for backend testing purposes.
+#### Legacy Admin Login
+
+A legacy username/password login is still available for backward compatibility:
+- Set `ADMIN_ID` and `ADMIN_PW` in `.env`
+- This creates a mock Firebase user without real tokens
+- **Not recommended**: Use Google OAuth instead for realistic testing
+
+**Note**: Admin OAuth login simulates the actual Android app authentication flow.
 
 ## Development Status
 

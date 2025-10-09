@@ -105,8 +105,8 @@ be/
 | `FIREBASE_STORAGE_BUCKET` | Yes      | -             | Firebase storage bucket (e.g., `project.appspot.com`) |
 | `OPENAI_API_KEY`          | Yes      | -             | OpenAI API key                                        |
 | `OPENAI_MODEL`            | No       | `gpt-5`       | OpenAI model name                                     |
-| `ADMIN_ID`                | No       | `admin`       | Admin page username                                   |
-| `ADMIN_PW`                | No       | `admin`       | Admin page password                                   |
+| `ADMIN_ID`                | No       | `admin`       | Admin page username (legacy)                          |
+| `ADMIN_PW`                | No       | `admin`       | Admin page password (legacy)                          |
 
 ### Firebase Setup
 
@@ -136,11 +136,19 @@ The `@require_firebase_auth` decorator verifies the token and adds `request.user
 
 For development and testing purposes, an admin web interface is available at `/admin-page`:
 
-- **Login**: Uses session-based authentication with `ADMIN_ID` and `ADMIN_PW` environment variables
+- **Primary Login**: Google OAuth 2.0 via Firebase Web SDK
+  - Real Firebase authentication tokens
+  - Same flow as Android app users
+  - Tokens stored in server-side session
+  - Automatically included in API calls via session
+- **Legacy Login**: Username/password with `ADMIN_ID` and `ADMIN_PW` (deprecated)
+  - Creates mock Firebase user without real tokens
+  - For backward compatibility only
+  - Use OAuth for realistic testing
 - **Purpose**: Web-based testing interface for API functionality without Android app
-- **Security**: Only for development; admin credentials should not be exposed in production
+- **Security**: Only for development; requires proper Firebase configuration
 
-**Note**: Admin login is separate from Firebase OAuth and is only for backend testing purposes.
+**Note**: Admin OAuth login simulates the actual Android app authentication flow with real Firebase tokens.
 
 ### PDF Management
 
@@ -193,13 +201,25 @@ List all exams for authenticated user
 
 #### `GET /admin-page`
 
-Web interface for testing (requires `ADMIN_ID` and `ADMIN_PW`)
+Web interface for testing with Google OAuth 2.0
+
+**Authentication**:
+- Primary: Google OAuth 2.0 via Firebase Web SDK (recommended)
+- Legacy: Username/password with `ADMIN_ID` and `ADMIN_PW` (deprecated)
 
 **Features**:
-- Session-based login authentication
+
+- Real Firebase Google authentication
 - PDF upload and exam generation
-- Firebase authentication flow testing
+- Full API testing with actual Firebase tokens
 - Backend operation debugging
+- User profile display with avatar and email
+
+**Implementation**:
+- Uses Firebase Web SDK (v10.7.1) from CDN
+- Tokens stored in server-side session (HTTPOnly)
+- Automatic token inclusion in API calls via `@require_firebase_auth` decorator
+- Session verification on each API request
 
 ## Key Services
 

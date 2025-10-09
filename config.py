@@ -24,9 +24,14 @@ class Config:
     MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 16777216))  # 16MB
     ALLOWED_EXTENSIONS = {'pdf'}
     
-    # Firebase
+    # Firebase (Backend Admin SDK)
     FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', 'serviceAccountKey.json')
     FIREBASE_STORAGE_BUCKET = os.getenv('FIREBASE_STORAGE_BUCKET')
+    
+    # Firebase (Web SDK for Admin OAuth)
+    FIREBASE_API_KEY = os.getenv('FIREBASE_API_KEY')
+    FIREBASE_AUTH_DOMAIN = os.getenv('FIREBASE_AUTH_DOMAIN')
+    FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID')
     
     # OpenAI
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')

@@ -26,8 +26,42 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
         .header h1 {
             font-size: 24px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .user-email {
+            font-size: 12px;
+            opacity: 0.9;
         }
         
         .logout-btn {
@@ -101,28 +135,171 @@
             margin-bottom: 15px;
         }
         
-        .feature-list {
+        .action-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background: #f8f9fa;
+            border-color: #764ba2;
+        }
+        
+        .upload-area.dragover {
+            background: #e7e9fd;
+            border-color: #667eea;
+        }
+        
+        .selected-file {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .pdf-list {
             list-style: none;
         }
         
-        .feature-list li {
-            padding: 12px;
+        .pdf-item {
+            padding: 15px;
             background: #f8f9fa;
             margin-bottom: 10px;
             border-radius: 6px;
-            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .coming-soon {
-            color: #999;
-            font-size: 14px;
-            font-style: italic;
+        .pdf-info {
+            flex: 1;
+        }
+        
+        .pdf-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .pdf-meta {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .pdf-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-small:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .token-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        
+        .token-label {
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>test.me Admin Dashboard</h1>
+        <div class="header-left">
+            <h1>test.me Dashboard</h1>
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" src="" alt="User">
+                <div class="user-details">
+                    <div id="userName" class="user-name"></div>
+                    <div id="userEmail" class="user-email"></div>
+                </div>
+            </div>
+        </div>
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
     
@@ -133,46 +310,90 @@
                 <p id="apiStatus">✓ Running</p>
             </div>
             <div class="status-item">
-                <h3>Firebase</h3>
-                <p id="firebaseStatus">✓ Connected</p>
+                <h3>Firebase Auth</h3>
+                <p id="firebaseStatus">✓ Authenticated</p>
             </div>
             <div class="status-item">
-                <h3>Environment</h3>
-                <p id="envStatus">Development</p>
+                <h3>Total PDFs</h3>
+                <p id="pdfCount">0</p>
             </div>
         </div>
         
         <div class="card">
-            <h2>🔥 Quick Actions</h2>
-            <div class="feature-section">
-                <h3>Available Features</h3>
-                <ul class="feature-list">
-                    <li>✅ Firebase Authentication</li>
-                    <li>✅ Cloud Firestore Database</li>
-                    <li>✅ Cloud Storage Integration</li>
-                    <li>✅ Admin Dashboard</li>
-                </ul>
+            <h2>📄 Upload PDF</h2>
+            <div id="uploadMessage" class="message"></div>
+            <div class="upload-area" id="uploadArea">
+                <p>📎 Click or drag PDF file here</p>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf">
             </div>
-            
-            <div class="feature-section">
-                <h3>Coming Soon</h3>
-                <ul class="feature-list">
-                    <li>📄 PDF Upload <span class="coming-soon">(implementation pending)</span></li>
-                    <li>🤖 GPT-5 Exam Generation <span class="coming-soon">(implementation pending)</span></li>
-                    <li>✍️ Answer Submission <span class="coming-soon">(implementation pending)</span></li>
-                    <li>⚡ Auto Grading <span class="coming-soon">(implementation pending)</span></li>
-                </ul>
-            </div>
+            <div id="selectedFile" class="selected-file"></div>
+            <button id="uploadBtn" class="action-btn" disabled>Upload PDF</button>
         </div>
         
         <div class="card">
-            <h2>📊 System Information</h2>
-            <p>Backend API is running and ready for development.</p>
-            <p style="margin-top: 10px; color: #666;">Test API endpoints at <code>/api/health</code></p>
+            <h2>📚 Your PDFs</h2>
+            <div id="pdfMessage" class="message"></div>
+            <div id="pdfLoading" class="loading" style="display: none;">Loading PDFs...</div>
+            <ul id="pdfList" class="pdf-list"></ul>
+        </div>
+        
+        <div class="card">
+            <h2>🔐 Firebase Token</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                This token is automatically included in all API requests.
+            </p>
+            <div class="token-display">
+                <div class="token-label">ID Token (Session):</div>
+                <div id="tokenPreview"></div>
+            </div>
         </div>
     </div>
     
     <script>
+        let firebaseToken = null;
+        let uploadedFile = null;
+        
+        // Fetch user info and token from session
+        async function initDashboard() {
+            try {
+                const response = await fetch('/admin/session-info');
+                if (!response.ok) {
+                    window.location.href = '/admin-page';
+                    return;
+                }
+                
+                const data = await response.json();
+                displayUserInfo(data.user, data.has_token);
+                
+                // Load PDFs
+                loadPDFs();
+                
+                // Check health
+                checkHealth();
+            } catch (error) {
+                console.error('Dashboard init error:', error);
+                window.location.href = '/admin-page';
+            }
+        }
+        
+        function displayUserInfo(user, hasToken) {
+            const userAvatar = document.getElementById('userAvatar');
+            const userName = document.getElementById('userName');
+            const userEmail = document.getElementById('userEmail');
+            
+            userName.textContent = user.displayName || user.email || 'Firebase User';
+            userEmail.textContent = user.email || 'No email';
+            userAvatar.src = user.photoURL || 'https://via.placeholder.com/32';
+            
+            // Display token preview
+            const tokenPreview = document.getElementById('tokenPreview');
+            if (hasToken) {
+                tokenPreview.textContent = 'Token stored in session (Auto-included in API requests)';
+            } else {
+                tokenPreview.textContent = 'No token found';
+            }
+        }
+        
         async function logout() {
             try {
                 await fetch('/admin/logout', {
@@ -184,7 +405,6 @@
             }
         }
         
-        // Check API health on load
         async function checkHealth() {
             try {
                 const response = await fetch('/health');
@@ -196,8 +416,189 @@
             }
         }
         
-        checkHealth();
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const selectedFileDiv = document.getElementById('selectedFile');
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showMessage('uploadMessage', 'Only PDF files are allowed', 'error');
+                return;
+            }
+            
+            uploadedFile = file;
+            selectedFileDiv.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            selectedFileDiv.style.display = 'block';
+            uploadBtn.disabled = false;
+        }
+        
+        uploadBtn.addEventListener('click', async () => {
+            if (!uploadedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', uploadedFile);
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            try {
+                const response = await fetch('/api/pdf/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('uploadMessage', 'PDF uploaded successfully!', 'success');
+                    uploadedFile = null;
+                    selectedFileDiv.style.display = 'none';
+                    fileInput.value = '';
+                    uploadBtn.disabled = true;
+                    uploadBtn.textContent = 'Upload PDF';
+                    
+                    // Reload PDF list
+                    loadPDFs();
+                } else {
+                    showMessage('uploadMessage', data.error || 'Upload failed', 'error');
+                }
+            } catch (error) {
+                showMessage('uploadMessage', 'Upload failed: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload PDF';
+            }
+        });
+        
+        async function loadPDFs() {
+            const pdfList = document.getElementById('pdfList');
+            const pdfLoading = document.getElementById('pdfLoading');
+            const pdfCount = document.getElementById('pdfCount');
+            
+            pdfLoading.style.display = 'block';
+            pdfList.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/pdf/list');
+                const data = await response.json();
+                
+                if (response.ok && data.pdfs) {
+                    pdfCount.textContent = data.pdfs.length;
+                    
+                    if (data.pdfs.length === 0) {
+                        pdfList.innerHTML = '<li style="text-align: center; color: #999; padding: 20px;">No PDFs uploaded yet</li>';
+                    } else {
+                        data.pdfs.forEach(pdf => {
+                            const li = document.createElement('li');
+                            li.className = 'pdf-item';
+                            li.innerHTML = `
+                                <div class="pdf-info">
+                                    <div class="pdf-name">${pdf.original_filename}</div>
+                                    <div class="pdf-meta">${(pdf.size / 1024 / 1024).toFixed(2)} MB • ${new Date(pdf.uploaded_at).toLocaleString()}</div>
+                                </div>
+                                <div class="pdf-actions">
+                                    <button class="btn-small btn-primary" onclick="generateExam('${pdf.file_id}')">Generate Exam</button>
+                                    <button class="btn-small btn-danger" onclick="deletePDF('${pdf.file_id}')">Delete</button>
+                                </div>
+                            `;
+                            pdfList.appendChild(li);
+                        });
+                    }
+                }
+            } catch (error) {
+                showMessage('pdfMessage', 'Failed to load PDFs: ' + error.message, 'error');
+            } finally {
+                pdfLoading.style.display = 'none';
+            }
+        }
+        
+        async function deletePDF(fileId) {
+            if (!confirm('Are you sure you want to delete this PDF?')) return;
+            
+            try {
+                const response = await fetch(`/api/pdf/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showMessage('pdfMessage', 'PDF deleted successfully', 'success');
+                    loadPDFs();
+                } else {
+                    const data = await response.json();
+                    showMessage('pdfMessage', data.error || 'Delete failed', 'error');
+                }
+            } catch (error) {
+                showMessage('pdfMessage', 'Delete failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function generateExam(pdfId) {
+            try {
+                const response = await fetch('/api/exam/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pdf_id: pdfId,
+                        num_questions: 10,
+                        difficulty: 'medium'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Exam generated successfully!\n\nExam ID: ' + data.exam_id);
+                } else {
+                    alert('Exam generation failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Exam generation failed: ' + error.message);
+            }
+        }
+        
+        function showMessage(elementId, message, type) {
+            const messageDiv = document.getElementById(elementId);
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize dashboard
+        initDashboard();
     </script>
 </body>
 </html>
-

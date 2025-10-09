@@ -1,17 +1,44 @@
 """
 API routes (REST API endpoints for mobile app)
 """
-from flask import jsonify, request, current_app
+from flask import jsonify, request, current_app, session
 from functools import wraps
 from firebase_admin import auth
 from app.routes import api_bp
 
 
 def require_firebase_auth(f):
-    """Decorator to require Firebase authentication"""
+    """Decorator to require Firebase authentication
+    
+    Supports two authentication methods:
+    1. Firebase ID token from Authorization header (for mobile app)
+    2. Session-based auth from admin web interface (for testing)
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get authorization header
+        # Check if user is authenticated via admin session
+        if session.get('firebase_authenticated') and session.get('firebase_token'):
+            # Admin session authentication
+            id_token = session.get('firebase_token')
+            firebase_user = session.get('firebase_user', {})
+            
+            # Verify the session token is still valid
+            try:
+                decoded_token = auth.verify_id_token(id_token)
+                request.user = {
+                    'uid': decoded_token['uid'],
+                    'email': decoded_token.get('email'),
+                    'firebase_user': decoded_token
+                }
+                return f(*args, **kwargs)
+            except Exception as e:
+                current_app.logger.error(f'Session token verification failed: {e}')
+                # Clear invalid session
+                session.pop('firebase_authenticated', None)
+                session.pop('firebase_token', None)
+                return jsonify({'error': 'Session expired, please login again'}), 401
+        
+        # Standard Firebase token authentication (from Authorization header)
         auth_header = request.headers.get('Authorization')
         
         if not auth_header or not auth_header.startswith('Bearer '):

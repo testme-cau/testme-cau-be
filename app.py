@@ -2,7 +2,6 @@
 Flask application entry point
 """
 from app import create_app
-import os
 
 # Create Flask application
 app = create_app()
