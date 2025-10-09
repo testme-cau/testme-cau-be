@@ -8,12 +8,13 @@
 
 ### Core Concept
 
-1. User uploads a lecture PDF via Android app
-2. PDF is uploaded to OpenAI via Assistants API
-3. GPT-5 directly reads and analyzes the PDF (including text, images, tables)
-4. GPT-5 generates customized exam questions
-5. User submits answers
-6. GPT-5 grades the answers by referencing the original PDF and provides feedback
+1. User authenticates via Firebase OAuth 2.0 (Android app) or admin login (web interface)
+2. User uploads a lecture PDF via Android app
+3. PDF is uploaded to OpenAI via Assistants API
+4. GPT-5 directly reads and analyzes the PDF (including text, images, tables)
+5. GPT-5 generates customized exam questions
+6. User submits answers
+7. GPT-5 grades the answers by referencing the original PDF and provides feedback
 
 ## Tech Stack
 
@@ -127,18 +128,24 @@ Note:
 - Metadata is stored in Cloud Firestore (NoSQL)
 ```
 
-## Admin Page
+## Authentication
+
+### Firebase OAuth 2.0 (Android App)
+
+Users authenticate through Firebase OAuth 2.0 in the Android app. All API endpoints (except `/` and `/health`) require a Firebase ID token in the `Authorization` header.
+
+### Admin Login (Web Interface)
 
 For development and testing purposes, an admin web interface is available at `/admin-page`.
 
-### Access
+#### Access
 
 1. Navigate to `http://localhost:5000/admin-page`
 2. Login with credentials set in `.env`:
-   - **Admin ID**: Value of `ADMIN_ID`
-   - **Admin PW**: Value of `ADMIN_PW`
+   - **Admin ID**: Value of `ADMIN_ID` (default: `admin`)
+   - **Admin PW**: Value of `ADMIN_PW` (default: `admin`)
 
-### Purpose
+#### Features
 
 The admin page allows you to:
 
@@ -147,7 +154,7 @@ The admin page allows you to:
 - Test Firebase authentication flow
 - Debug and verify backend operations
 
-**Note**: This is for development only. Do not expose admin credentials in production.
+**Note**: Admin login is separate from Firebase OAuth and is only for backend testing purposes.
 
 ## Development Status
 

@@ -14,7 +14,7 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
 
 ### Core Workflow
 
-1. **Authentication**: User authenticates via Firebase OAuth 2.0
+1. **Authentication**: User authenticates via Firebase OAuth 2.0 (Android app) or admin login (web interface)
 2. **Upload**: PDF uploaded to Firebase Cloud Storage
 3. **Processing**: PDF uploaded to OpenAI via Assistants API
 4. **Generation**: GPT-5 directly reads PDF and generates exam questions
@@ -25,17 +25,20 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
 ## Technology Stack
 
 ### Backend Framework
+
 - **Flask 3.0.3**: Web framework
 - **Werkzeug 3.0.3**: WSGI utilities
 - **Flask-CORS 4.0.1**: Cross-origin resource sharing
 
 ### Firebase Services
+
 - **firebase-admin 6.5.0**: Python Admin SDK
   - **Authentication**: ID token verification
   - **Cloud Storage**: PDF file storage with signed URLs
   - **Cloud Firestore**: NoSQL document database
 
 ### AI Integration
+
 - **openai >=1.0.0**: OpenAI Python library
 - **Model**: GPT-5 (with fallback to gpt-4.1, gpt-4o, gpt-4o-mini)
 - **Assistants API**: For PDF file analysis with file_search tool
@@ -44,6 +47,7 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
   - PDF-referenced answer grading with detailed feedback
 
 ### Utilities
+
 - **python-dotenv 1.0.1**: Environment variable management
 - **requests 2.32.3**: HTTP requests
 - **python-dateutil 2.9.0**: Date/time utilities
@@ -90,19 +94,19 @@ be/
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `FLASK_APP` | Yes | `app.py` | Flask application entry point |
-| `FLASK_ENV` | No | `development` | Environment mode |
-| `SECRET_KEY` | Yes | - | Flask secret key (use `secrets.token_hex(32)`) |
-| `HOST` | No | `0.0.0.0` | Server host |
-| `PORT` | No | `5000` | Server port |
-| `MAX_FILE_SIZE` | No | `16777216` | Max upload size in bytes (16MB) |
-| `FIREBASE_STORAGE_BUCKET` | Yes | - | Firebase storage bucket (e.g., `project.appspot.com`) |
-| `OPENAI_API_KEY` | Yes | - | OpenAI API key |
-| `OPENAI_MODEL` | No | `gpt-5` | OpenAI model name |
-| `ADMIN_ID` | No | `admin` | Admin page username |
-| `ADMIN_PW` | No | `admin` | Admin page password |
+| Variable                  | Required | Default       | Description                                           |
+| ------------------------- | -------- | ------------- | ----------------------------------------------------- |
+| `FLASK_APP`               | Yes      | `app.py`      | Flask application entry point                         |
+| `FLASK_ENV`               | No       | `development` | Environment mode                                      |
+| `SECRET_KEY`              | Yes      | -             | Flask secret key (use `secrets.token_hex(32)`)        |
+| `HOST`                    | No       | `0.0.0.0`     | Server host                                           |
+| `PORT`                    | No       | `5000`        | Server port                                           |
+| `MAX_FILE_SIZE`           | No       | `16777216`    | Max upload size in bytes (16MB)                       |
+| `FIREBASE_STORAGE_BUCKET` | Yes      | -             | Firebase storage bucket (e.g., `project.appspot.com`) |
+| `OPENAI_API_KEY`          | Yes      | -             | OpenAI API key                                        |
+| `OPENAI_MODEL`            | No       | `gpt-5`       | OpenAI model name                                     |
+| `ADMIN_ID`                | No       | `admin`       | Admin page username                                   |
+| `ADMIN_PW`                | No       | `admin`       | Admin page password                                   |
 
 ### Firebase Setup
 
@@ -118,6 +122,8 @@ be/
 
 ### Authentication
 
+#### Firebase OAuth 2.0 (Android App Users)
+
 All API endpoints (except `/` and `/health`) require Firebase ID token in the `Authorization` header:
 
 ```
@@ -126,29 +132,45 @@ Authorization: Bearer <firebase-id-token>
 
 The `@require_firebase_auth` decorator verifies the token and adds `request.user` with Firebase user data.
 
+#### Admin Login (Web Interface)
+
+For development and testing purposes, an admin web interface is available at `/admin-page`:
+
+- **Login**: Uses session-based authentication with `ADMIN_ID` and `ADMIN_PW` environment variables
+- **Purpose**: Web-based testing interface for API functionality without Android app
+- **Security**: Only for development; admin credentials should not be exposed in production
+
+**Note**: Admin login is separate from Firebase OAuth and is only for backend testing purposes.
+
 ### PDF Management
 
 #### `POST /api/pdf/upload`
+
 Upload PDF to Firebase Storage
 
 **Request**: `multipart/form-data` with `file` field  
 **Response**: `{ file_id, original_filename, file_url, uploaded_at, size }`
 
 #### `GET /api/pdf/<file_id>/download`
+
 Get PDF download URL (redirects to Firebase signed URL, 1-hour expiration)
 
 #### `GET /api/pdf/list`
+
 List all PDFs for authenticated user
 
 #### `DELETE /api/pdf/<file_id>`
+
 Delete PDF from Firebase Storage and Firestore
 
 ### Exam Management
 
 #### `POST /api/exam/generate`
+
 Generate exam from uploaded PDF
 
 **Request Body**:
+
 ```json
 {
   "pdf_id": "uuid",
@@ -160,15 +182,24 @@ Generate exam from uploaded PDF
 **Response**: Exam with questions, total points, estimated time
 
 #### `GET /api/exam/<exam_id>`
+
 Get exam details
 
 #### `GET /api/exam/list`
+
 List all exams for authenticated user
 
 ### Admin Interface
 
 #### `GET /admin-page`
+
 Web interface for testing (requires `ADMIN_ID` and `ADMIN_PW`)
+
+**Features**:
+- Session-based login authentication
+- PDF upload and exam generation
+- Firebase authentication flow testing
+- Backend operation debugging
 
 ## Key Services
 
@@ -177,11 +208,13 @@ Web interface for testing (requires `ADMIN_ID` and `ADMIN_PW`)
 Handles OpenAI API interactions using Assistants API for PDF processing.
 
 **Key Methods**:
+
 - `generate_exam_from_pdf(pdf_bytes, original_filename, num_questions, difficulty)`: Generate exam questions by uploading PDF to OpenAI
 - `grade_exam_with_pdf(pdf_bytes, original_filename, questions, answers)`: Grade entire exam by referencing the original PDF
 - `grade_answer(question, student_answer, correct_answer)`: Legacy method - Grade single answer without PDF reference
 
 **Features**:
+
 - **Assistants API**: Creates temporary assistant with file_search tool
 - **Direct PDF Reading**: GPT reads PDF content including text, images, tables, and diagrams
 - Model fallback: `gpt-5` → `gpt-4.1` → `gpt-4o` → `gpt-4o-mini`
@@ -193,6 +226,7 @@ Handles OpenAI API interactions using Assistants API for PDF processing.
 Manages Firebase Cloud Storage operations.
 
 **Key Methods**:
+
 - `upload_file(file, user_id, original_filename)`: Upload PDF
 - `get_download_url(storage_path, expiration)`: Generate signed URL
 - `delete_file(storage_path)`: Delete file
@@ -207,6 +241,7 @@ Manages Firebase Cloud Storage operations.
 ### Users Collection: `users/{user_id}`
 
 #### PDFs Subcollection: `users/{user_id}/pdfs/{file_id}`
+
 ```json
 {
   "file_id": "uuid",
@@ -221,6 +256,7 @@ Manages Firebase Cloud Storage operations.
 ```
 
 #### Exams Subcollection: `users/{user_id}/exams/{exam_id}`
+
 ```json
 {
   "exam_id": "firestore_auto_id",
@@ -239,18 +275,21 @@ Manages Firebase Cloud Storage operations.
 ## Development Guidelines
 
 ### Code Style
+
 - Follow PEP 8 style guide
 - Use type hints where applicable
 - Document functions with docstrings
 - Keep functions focused and modular
 
 ### Error Handling
+
 - Use try-except blocks for external service calls
 - Log errors with `current_app.logger.error()`
 - Return meaningful error messages to clients
 - Use appropriate HTTP status codes
 
 ### Security
+
 - Never commit `.env` or `serviceAccountKey.json`
 - Validate all user inputs
 - Use Firebase Admin SDK for token verification
@@ -258,6 +297,7 @@ Manages Firebase Cloud Storage operations.
 - Implement rate limiting for production
 
 ### Testing
+
 - Run GPT service tests: `pytest tests/test_gpt_service.py -v`
 - Test GPT-5 connection: `python tests/test_gpt5_greeting.py`
 - Use admin page for end-to-end testing
@@ -275,12 +315,14 @@ Manages Firebase Cloud Storage operations.
 ### Modifying GPT Behavior
 
 Edit prompts in `app/services/gpt_service.py`:
+
 - `generate_exam_from_text()`: Modify `system_prompt` or `user_prompt`
 - `grade_answer()`: Adjust grading criteria in system prompt
 
 ### Changing Storage Location
 
 Firebase Storage paths are in `FirebaseStorageService.upload_file()`:
+
 - Current: `pdfs/{user_id}/{uuid}.pdf`
 - Modify to organize by date, course, etc.
 
@@ -293,24 +335,28 @@ Firebase Storage paths are in `FirebaseStorageService.upload_file()`:
 ## Deployment Considerations
 
 ### Environment
+
 - Set `FLASK_ENV=production`
 - Use a strong `SECRET_KEY`
 - Enable HTTPS only
 - Set up proper CORS origins in `config.py`
 
 ### Firebase
+
 - Use Firebase project with billing enabled for production
 - Configure Storage security rules
 - Set up Firestore indexes for queries
 - Monitor usage in Firebase Console
 
 ### OpenAI
+
 - Monitor API usage and costs
 - Implement rate limiting
 - Consider caching common exam generations
 - Set up usage alerts
 
 ### Scaling
+
 - Use WSGI server (Gunicorn, uWSGI)
 - Deploy behind reverse proxy (Nginx)
 - Consider Firebase Functions for serverless scaling
@@ -319,23 +365,27 @@ Firebase Storage paths are in `FirebaseStorageService.upload_file()`:
 ## Troubleshooting
 
 ### Firebase Initialization Failed
+
 - Verify `serviceAccountKey.json` exists and is valid
 - Check `FIREBASE_STORAGE_BUCKET` in `.env`
 - Ensure Firebase project has Storage enabled
 
 ### GPT-5 API Errors
+
 - Verify `OPENAI_API_KEY` is valid
 - Check API usage limits
 - Review fallback model behavior in logs
 - Test with `tests/test_gpt5_greeting.py`
 
 ### PDF Upload Fails
+
 - Check file size against `MAX_FILE_SIZE`
 - Verify Firebase Storage permissions
 - Ensure user is authenticated
 - Check Firebase Storage rules
 
 ### Authentication Issues
+
 - Verify Firebase ID token is being sent
 - Check token hasn't expired (1 hour default)
 - Ensure Firebase project matches credentials
@@ -351,4 +401,3 @@ MIT License - See LICENSE file for details
 **For AI Agents**: This document contains the complete technical specification
 
 Last Updated: 2025-10-09
-
