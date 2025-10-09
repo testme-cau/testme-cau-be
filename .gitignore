@@ -88,3 +88,4 @@ __pycache__/
 # 업로드 파일
 uploads/
 
+tests/.artifacts/
