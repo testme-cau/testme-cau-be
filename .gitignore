@@ -85,7 +85,5 @@ dmypy.json
 __pycache__/
 *.pyc
 
-# 업로드 파일
-uploads/
-
+# 테스트 결과물
 tests/.artifacts/

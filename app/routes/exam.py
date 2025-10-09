@@ -59,18 +59,9 @@ def generate_exam():
         if pdf_data.get('user_id') != user_uid:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Get PDF file path
-        file_path = os.path.join(
-            current_app.config['UPLOAD_FOLDER'],
-            pdf_data['storage_path']
-        )
-        
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'PDF file not found'}), 404
-        
-        # Extract text from PDF
+        # Extract text from PDF in Firebase Storage
         pdf_processor = PDFProcessor()
-        extraction_result = pdf_processor.extract_text(file_path)
+        extraction_result = pdf_processor.extract_text_from_storage(pdf_data['storage_path'])
         
         if not extraction_result['success']:
             return jsonify({

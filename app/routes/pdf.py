@@ -2,25 +2,21 @@
 PDF routes (file upload and management)
 """
 import os
-from datetime import datetime
-from flask import request, jsonify, current_app, send_file
+from datetime import datetime, timedelta
+from flask import request, jsonify, current_app, redirect
 from firebase_admin import firestore
 from werkzeug.utils import secure_filename
 from app.routes import api_bp
 from app.routes.api import require_firebase_auth
-from app.utils.file_utils import (
-    allowed_file,
-    generate_unique_filename,
-    get_user_upload_directory,
-    get_file_size
-)
+from app.services.firebase_storage import FirebaseStorageService
+from app.utils.file_utils import allowed_file
 
 
 @api_bp.route('/pdf/upload', methods=['POST'])
 @require_firebase_auth
 def upload_pdf():
     """
-    Upload PDF file
+    Upload PDF file to Firebase Storage
     
     Request:
         - multipart/form-data
@@ -65,33 +61,27 @@ def upload_pdf():
         # Get user info
         user_uid = request.user['uid']
         
-        # Generate unique filename
-        original_filename = secure_filename(file.filename)
-        unique_filename = generate_unique_filename(original_filename)
-        file_id = unique_filename.rsplit('.', 1)[0]  # UUID without extension
-        
-        # Get user upload directory
-        user_dir = get_user_upload_directory(
-            current_app.config['UPLOAD_FOLDER'],
-            user_uid
+        # Upload to Firebase Storage
+        storage_service = FirebaseStorageService()
+        upload_result = storage_service.upload_file(
+            file,
+            user_uid,
+            file.filename
         )
         
-        # Save file
-        file_path = os.path.join(user_dir, unique_filename)
-        file.save(file_path)
-        
-        # Get file size
-        file_size = get_file_size(file_path)
+        # Get file size from Firebase Storage
+        file_size = storage_service.get_file_size(upload_result['storage_path'])
         
         # Save metadata to Firestore
         db = firestore.client()
+        file_id = upload_result['file_id']
         pdf_ref = db.collection('users').document(user_uid).collection('pdfs').document(file_id)
         
         pdf_data = {
             'file_id': file_id,
-            'original_filename': original_filename,
-            'unique_filename': unique_filename,
-            'storage_path': f"{user_uid}/{unique_filename}",
+            'original_filename': upload_result['original_filename'],
+            'unique_filename': upload_result['unique_filename'],
+            'storage_path': upload_result['storage_path'],
             'size': file_size,
             'user_id': user_uid,
             'uploaded_at': firestore.SERVER_TIMESTAMP,
@@ -106,7 +96,7 @@ def upload_pdf():
         return jsonify({
             'success': True,
             'file_id': file_id,
-            'original_filename': original_filename,
+            'original_filename': upload_result['original_filename'],
             'file_url': file_url,
             'uploaded_at': datetime.utcnow().isoformat(),
             'size': file_size
@@ -121,13 +111,14 @@ def upload_pdf():
 @require_firebase_auth
 def download_pdf(file_id):
     """
-    Download PDF file
+    Download PDF file from Firebase Storage
+    Returns a signed URL that redirects to the file
     
     Args:
         file_id: UUID of the file
     
     Response:
-        PDF file or error
+        Redirect to signed URL or error
     """
     try:
         user_uid = request.user['uid']
@@ -146,24 +137,18 @@ def download_pdf(file_id):
         if pdf_data.get('user_id') != user_uid:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Construct file path
-        file_path = os.path.join(
-            current_app.config['UPLOAD_FOLDER'],
-            pdf_data['storage_path']
+        # Generate signed URL from Firebase Storage
+        storage_service = FirebaseStorageService()
+        signed_url = storage_service.get_download_url(
+            pdf_data['storage_path'],
+            expiration=timedelta(hours=1)
         )
         
-        # Check if file exists
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'File not found on server'}), 404
+        # Redirect to signed URL
+        return redirect(signed_url)
         
-        # Send file
-        return send_file(
-            file_path,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=pdf_data['original_filename']
-        )
-        
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found in storage'}), 404
     except Exception as e:
         current_app.logger.error(f'Download failed: {e}')
         return jsonify({'error': 'Download failed', 'details': str(e)}), 500
@@ -225,7 +210,7 @@ def list_pdfs():
 @require_firebase_auth
 def delete_pdf(file_id):
     """
-    Delete PDF file
+    Delete PDF file from Firebase Storage and Firestore
     
     Args:
         file_id: UUID of the file
@@ -253,14 +238,9 @@ def delete_pdf(file_id):
         if pdf_data.get('user_id') != user_uid:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Delete physical file
-        file_path = os.path.join(
-            current_app.config['UPLOAD_FOLDER'],
-            pdf_data['storage_path']
-        )
-        
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Delete file from Firebase Storage
+        storage_service = FirebaseStorageService()
+        storage_service.delete_file(pdf_data['storage_path'])
         
         # Delete metadata from Firestore
         pdf_ref.delete()

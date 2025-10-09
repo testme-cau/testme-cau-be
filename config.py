@@ -22,12 +22,12 @@ class Config:
     SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
     
     # File Upload
-    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 16777216))  # 16MB
     ALLOWED_EXTENSIONS = {'pdf'}
     
     # Firebase
     FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', 'serviceAccountKey.json')
+    FIREBASE_STORAGE_BUCKET = os.getenv('FIREBASE_STORAGE_BUCKET')
     
     # OpenAI
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
