@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from app.routes import api_bp
 from app.routes.api import require_firebase_auth
 from app.services.gpt_service import GPTService
-from app.services.pdf_processor import PDFProcessor
+from app.services.firebase_storage import FirebaseStorageService
 
 
 @api_bp.route('/exam/generate', methods=['POST'])
@@ -59,22 +59,15 @@ def generate_exam():
         if pdf_data.get('user_id') != user_uid:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Extract text from PDF in Firebase Storage
-        pdf_processor = PDFProcessor()
-        extraction_result = pdf_processor.extract_text_from_storage(pdf_data['storage_path'])
+        # Download PDF from Firebase Storage
+        storage_service = FirebaseStorageService()
+        pdf_bytes = storage_service.download_file(pdf_data['storage_path'])
         
-        if not extraction_result['success']:
-            return jsonify({
-                'error': 'Failed to extract text from PDF',
-                'details': extraction_result.get('error')
-            }), 500
-        
-        pdf_text = extraction_result['text']
-        
-        # Generate exam using GPT
+        # Generate exam using GPT (GPT will read the PDF directly)
         gpt_service = GPTService(api_key=current_app.config['OPENAI_API_KEY'])
-        generation_result = gpt_service.generate_exam_from_text(
-            pdf_text,
+        generation_result = gpt_service.generate_exam_from_pdf(
+            pdf_bytes,
+            pdf_data['original_filename'],
             num_questions=num_questions,
             difficulty=difficulty
         )

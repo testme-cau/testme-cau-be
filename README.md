@@ -9,9 +9,11 @@
 ### Core Concept
 
 1. User uploads a lecture PDF via Android app
-2. GPT-5 analyzes the PDF and generates exam questions
-3. User submits answers
-4. GPT-5 grades the answers and provides feedback
+2. PDF is uploaded to OpenAI via Assistants API
+3. GPT-5 directly reads and analyzes the PDF (including text, images, tables)
+4. GPT-5 generates customized exam questions
+5. User submits answers
+6. GPT-5 grades the answers by referencing the original PDF and provides feedback
 
 ## Tech Stack
 
@@ -112,7 +114,7 @@ be/
 ├── app/               # Main application package
 │   ├── __init__.py
 │   ├── routes/        # API endpoints
-│   ├── services/      # Business logic (GPT service, Firebase Storage, PDF processor, etc.)
+│   ├── services/      # Business logic (GPT service with Assistants API, Firebase Storage, etc.)
 │   └── utils/         # Utility functions
 │
 ├── public/            # Static files

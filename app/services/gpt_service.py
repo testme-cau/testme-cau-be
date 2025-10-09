@@ -143,66 +143,100 @@ class GPTService:
         raise last_error  # type: ignore[misc]
 
     # ---------- public methods ----------
-    def generate_exam_from_text(self, pdf_text: str, num_questions: int = 10, difficulty: str = "medium") -> Dict[str, Any]:
+    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium") -> Dict[str, Any]:
+        """
+        Generate exam from PDF file using OpenAI File API.
+        
+        Args:
+            pdf_bytes: PDF file content as bytes
+            original_filename: Original filename (for OpenAI file upload)
+            num_questions: Number of questions to generate
+            difficulty: Difficulty level (easy, medium, hard)
+        
+        Returns:
+            Dict with success status and exam data
+        """
         try:
-            system_prompt = (
-                f"You are an expert exam creator.\n"
-                f"Generate {num_questions} exam questions based on the provided lecture material.\n"
-                f"Difficulty level: {difficulty}\n\n"
-                "Create a mix of:\n"
-                "- Multiple choice questions (40%)\n"
-                "- Short answer questions (40%)\n"
-                "- Essay questions (20%)\n\n"
-                "For each question, provide:\n"
-                "1. Question text\n"
-                "2. Question type\n"
-                "3. Options (if multiple choice)\n"
-                "4. Points value\n\n"
-                "Return only valid JSON with this structure:\n"
-                "{\n"
-                "    \"questions\": [\n"
-                "        {\n"
-                "            \"id\": 1,\n"
-                "            \"question\": \"...\",\n"
-                "            \"type\": \"multiple_choice|short_answer|essay\",\n"
-                "            \"options\": [\"A\", \"B\", \"C\", \"D\"],\n"
-                "            \"points\": 10\n"
-                "        }\n"
-                "    ],\n"
-                "    \"total_points\": 100,\n"
-                "    \"estimated_time\": 60\n"
-                "}"
+            # Upload PDF to OpenAI
+            import io
+            pdf_file = io.BytesIO(pdf_bytes)
+            pdf_file.name = original_filename
+            
+            file_response = self.client.files.create(
+                file=pdf_file,
+                purpose='assistants'
             )
-            user_prompt = f"Lecture material:\n\n{pdf_text[:15000]}"
-
-            # For gpt-5, do not force response_format to reduce incompat issues
-            response = self._chat_with_fallback(
+            file_id = file_response.id
+            
+            self._log_warn(f"Uploaded PDF to OpenAI: {file_id}")
+            
+            # Create assistant for exam generation
+            assistant = self.client.beta.assistants.create(
+                name="Exam Generator",
+                instructions=(
+                    f"You are an expert exam creator. "
+                    f"Analyze the provided PDF lecture material and generate {num_questions} exam questions. "
+                    f"Difficulty level: {difficulty}. "
+                    "Create a mix of multiple choice (40%), short answer (40%), and essay questions (20%). "
+                    "Return ONLY valid JSON with this exact structure: "
+                    '{"questions": [{"id": 1, "question": "...", "type": "multiple_choice|short_answer|essay", '
+                    '"options": ["A", "B", "C", "D"], "points": 10}], "total_points": 100, "estimated_time": 60}'
+                ),
+                model=self.model_candidates[0],  # Use primary model
+                tools=[{"type": "file_search"}],
+            )
+            
+            # Create thread and attach file
+            thread = self.client.beta.threads.create(
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.7,
-                max_tokens=4000,
-                response_format={"type": "json_object"},
+                    {
+                        "role": "user",
+                        "content": f"Generate {num_questions} exam questions from this lecture PDF at {difficulty} difficulty level.",
+                        "attachments": [
+                            {"file_id": file_id, "tools": [{"type": "file_search"}]}
+                        ]
+                    }
+                ]
             )
-
-            result = response.choices[0].message.content or "{}"
-            try:
-                exam_data = json.loads(result)
-            except Exception:
-                # Try to rescue JSON from content if model returned extra text
-                import re
-                match = re.search(r"\{[\s\S]*\}\s*$", result)
-                if match:
-                    exam_data = json.loads(match.group(0))
-                else:
-                    raise
-
-            return {
-                'success': True,
-                'exam': exam_data,
-                'model': self.model,
-            }
+            
+            # Run assistant
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.id,
+                assistant_id=assistant.id,
+            )
+            
+            if run.status == 'completed':
+                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                response_content = messages.data[0].content[0].text.value
+                
+                # Parse JSON from response
+                try:
+                    exam_data = json.loads(response_content)
+                except Exception:
+                    # Try to extract JSON from response
+                    import re
+                    match = re.search(r'\{[\s\S]*\}', response_content)
+                    if match:
+                        exam_data = json.loads(match.group(0))
+                    else:
+                        raise ValueError(f"Could not parse JSON from response: {response_content[:200]}")
+                
+                # Cleanup
+                self.client.files.delete(file_id)
+                self.client.beta.assistants.delete(assistant.id)
+                
+                return {
+                    'success': True,
+                    'exam': exam_data,
+                    'model': self.model,
+                }
+            else:
+                # Cleanup on failure
+                self.client.files.delete(file_id)
+                self.client.beta.assistants.delete(assistant.id)
+                
+                raise Exception(f"Assistant run failed with status: {run.status}")
+                
         except Exception as e:
             self._log_error(f'GPT exam generation failed: {e}')
             return {
@@ -210,7 +244,123 @@ class GPTService:
                 'error': str(e),
             }
 
+    def grade_exam_with_pdf(self, pdf_bytes: bytes, original_filename: str, questions: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Grade exam answers by referencing the original PDF.
+        
+        Args:
+            pdf_bytes: Original PDF file content as bytes
+            original_filename: Original filename
+            questions: List of exam questions
+            answers: List of student answers
+        
+        Returns:
+            Dict with success status and grading results
+        """
+        try:
+            # Upload PDF to OpenAI
+            import io
+            pdf_file = io.BytesIO(pdf_bytes)
+            pdf_file.name = original_filename
+            
+            file_response = self.client.files.create(
+                file=pdf_file,
+                purpose='assistants'
+            )
+            file_id = file_response.id
+            
+            self._log_warn(f"Uploaded PDF for grading to OpenAI: {file_id}")
+            
+            # Create assistant for grading
+            assistant = self.client.beta.assistants.create(
+                name="Exam Grader",
+                instructions=(
+                    "You are an expert exam grader. "
+                    "Grade student answers based on the lecture PDF content. "
+                    "Be objective and provide constructive feedback. "
+                    "Return ONLY valid JSON with this structure: "
+                    '{"question_results": [{"question_id": 1, "score": 0-100, "feedback": "...", "is_correct": true/false}], '
+                    '"total_score": 85.5, "max_score": 100, "percentage": 85.5}'
+                ),
+                model=self.model_candidates[0],
+                tools=[{"type": "file_search"}],
+            )
+            
+            # Prepare grading prompt
+            grading_text = "Grade the following exam answers based on the lecture PDF:\n\n"
+            for question in questions:
+                q_id = question['id']
+                answer = next((a for a in answers if a['question_id'] == q_id), None)
+                
+                grading_text += f"Question {q_id} ({question['points']} points):\n"
+                grading_text += f"{question['question']}\n"
+                if answer:
+                    grading_text += f"Student's Answer: {answer['answer']}\n\n"
+                else:
+                    grading_text += "Student's Answer: [No answer provided]\n\n"
+            
+            # Create thread and attach file
+            thread = self.client.beta.threads.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": grading_text,
+                        "attachments": [
+                            {"file_id": file_id, "tools": [{"type": "file_search"}]}
+                        ]
+                    }
+                ]
+            )
+            
+            # Run assistant
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.id,
+                assistant_id=assistant.id,
+            )
+            
+            if run.status == 'completed':
+                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                response_content = messages.data[0].content[0].text.value
+                
+                # Parse JSON from response
+                try:
+                    result_data = json.loads(response_content)
+                except Exception:
+                    # Try to extract JSON from response
+                    import re
+                    match = re.search(r'\{[\s\S]*\}', response_content)
+                    if match:
+                        result_data = json.loads(match.group(0))
+                    else:
+                        raise ValueError(f"Could not parse JSON from grading response: {response_content[:200]}")
+                
+                # Cleanup
+                self.client.files.delete(file_id)
+                self.client.beta.assistants.delete(assistant.id)
+                
+                return {
+                    'success': True,
+                    'result': result_data,
+                }
+            else:
+                # Cleanup on failure
+                self.client.files.delete(file_id)
+                self.client.beta.assistants.delete(assistant.id)
+                
+                raise Exception(f"Assistant run failed with status: {run.status}")
+                
+        except Exception as e:
+            self._log_error(f'Exam grading with PDF failed: {e}')
+            return {
+                'success': False,
+                'error': str(e),
+            }
+    
     def grade_answer(self, question: str, student_answer: str, correct_answer: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Legacy method: Grade single answer without PDF reference.
+        Note: Consider using grade_exam_with_pdf() for more accurate grading.
+        """
         try:
             system_prompt = (
                 "You are an expert exam grader.\n"

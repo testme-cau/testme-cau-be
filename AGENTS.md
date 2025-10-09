@@ -16,10 +16,10 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
 
 1. **Authentication**: User authenticates via Firebase OAuth 2.0
 2. **Upload**: PDF uploaded to Firebase Cloud Storage
-3. **Processing**: PDF text extracted using PyPDF2
-4. **Generation**: GPT-5 analyzes content and generates exam questions
+3. **Processing**: PDF uploaded to OpenAI via Assistants API
+4. **Generation**: GPT-5 directly reads PDF and generates exam questions
 5. **Submission**: User submits answers via API
-6. **Grading**: GPT-5 evaluates answers and provides feedback
+6. **Grading**: GPT-5 evaluates answers by referencing the original PDF and provides feedback
 7. **Storage**: All metadata stored in Cloud Firestore
 
 ## Technology Stack
@@ -38,12 +38,10 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
 ### AI Integration
 - **openai >=1.0.0**: OpenAI Python library
 - **Model**: GPT-5 (with fallback to gpt-4.1, gpt-4o, gpt-4o-mini)
+- **Assistants API**: For PDF file analysis with file_search tool
 - **Use Cases**:
-  - Exam question generation from PDF text
-  - Answer grading with detailed feedback
-
-### PDF Processing
-- **pypdf2 3.0.1**: PDF text extraction
+  - Direct PDF reading and exam question generation
+  - PDF-referenced answer grading with detailed feedback
 
 ### Utilities
 - **python-dotenv 1.0.1**: Environment variable management
@@ -73,9 +71,8 @@ be/
 │   │   └── exam.py          # Exam generation/grading
 │   │
 │   ├── services/            # Business logic
-│   │   ├── gpt_service.py       # OpenAI GPT integration
-│   │   ├── firebase_storage.py  # Firebase Storage wrapper
-│   │   └── pdf_processor.py     # PDF text extraction
+│   │   ├── gpt_service.py       # OpenAI GPT integration (Assistants API)
+│   │   └── firebase_storage.py  # Firebase Storage wrapper
 │   │
 │   ├── utils/               # Utility functions
 │   │   └── file_utils.py    # File validation helpers
@@ -177,16 +174,18 @@ Web interface for testing (requires `ADMIN_ID` and `ADMIN_PW`)
 
 ### GPTService (`app/services/gpt_service.py`)
 
-Handles OpenAI API interactions with model fallback mechanism.
+Handles OpenAI API interactions using Assistants API for PDF processing.
 
 **Key Methods**:
-- `generate_exam_from_text(pdf_text, num_questions, difficulty)`: Generate exam questions
-- `grade_answer(question, student_answer, correct_answer)`: Grade single answer
-- `grade_exam(questions, answers)`: Grade entire exam
+- `generate_exam_from_pdf(pdf_bytes, original_filename, num_questions, difficulty)`: Generate exam questions by uploading PDF to OpenAI
+- `grade_exam_with_pdf(pdf_bytes, original_filename, questions, answers)`: Grade entire exam by referencing the original PDF
+- `grade_answer(question, student_answer, correct_answer)`: Legacy method - Grade single answer without PDF reference
 
 **Features**:
+- **Assistants API**: Creates temporary assistant with file_search tool
+- **Direct PDF Reading**: GPT reads PDF content including text, images, tables, and diagrams
 - Model fallback: `gpt-5` → `gpt-4.1` → `gpt-4o` → `gpt-4o-mini`
-- Parameter compatibility handling (e.g., `max_completion_tokens` vs `max_tokens`)
+- Automatic cleanup: Deletes uploaded files and assistants after use
 - JSON response parsing with error handling
 
 ### FirebaseStorageService (`app/services/firebase_storage.py`)
@@ -201,14 +200,7 @@ Manages Firebase Cloud Storage operations.
 
 **Storage Path Format**: `pdfs/{user_id}/{uuid}.pdf`
 
-### PDFProcessor (`app/services/pdf_processor.py`)
-
-Extracts text from PDFs.
-
-**Key Methods**:
-- `extract_text_from_storage(storage_path)`: Extract text from Firebase Storage PDF
-- `extract_text_from_bytes(file_obj)`: Extract text from file-like object
-- `get_pdf_info_from_storage(storage_path)`: Get PDF metadata
+**Note**: PDFs are temporarily downloaded from Firebase Storage and uploaded to OpenAI for processing, then cleaned up automatically.
 
 ## Data Models (Firestore)
 

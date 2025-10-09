@@ -20,6 +20,3 @@ python-dateutil==2.9.0
 # AI Integration (OpenAI)
 openai>=1.0.0
 
-# PDF Processing
-pypdf2==3.0.1
-
