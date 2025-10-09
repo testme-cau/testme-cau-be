@@ -19,7 +19,6 @@ class Config:
     # Server
     HOST = os.getenv('HOST', '0.0.0.0')
     PORT = int(os.getenv('PORT', 5000))
-    SERVER_URL = os.getenv('SERVER_URL', 'http://localhost:5000')
     
     # File Upload
     MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 16777216))  # 16MB
