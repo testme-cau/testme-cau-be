@@ -6,19 +6,37 @@ from functools import wraps
 from app.routes import admin_bp
 
 
-def admin_required(f):
-    """Decorator to require admin authentication (Firebase OAuth)"""
+def admin_gate_required(f):
+    """Decorator to require admin gate authentication (Step 1)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('firebase_authenticated'):
-            return jsonify({'error': 'Unauthorized'}), 401
+        if not session.get('admin_authenticated'):
+            return redirect(url_for('admin.admin_login_page'))
         return f(*args, **kwargs)
     return decorated_function
 
 
+def firebase_auth_required(f):
+    """Decorator to require full authentication (Step 1 + Step 2)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_authenticated'):
+            return redirect(url_for('admin.admin_login_page'))
+        if not session.get('firebase_authenticated'):
+            return redirect(url_for('admin.oauth_page'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@admin_bp.route('/login-page')
+def admin_login_page():
+    """Step 1: Admin gate login page"""
+    return render_template('admin/login.html')
+
+
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
-    """Legacy admin login endpoint (deprecated, use Firebase OAuth instead)"""
+    """Step 1: Admin gate login (access control)"""
     data = request.get_json()
     admin_id = data.get('admin_id')
     admin_pw = data.get('admin_pw')
@@ -26,19 +44,12 @@ def admin_login():
     # Verify credentials from config
     if (admin_id == current_app.config['ADMIN_ID'] and 
         admin_pw == current_app.config['ADMIN_PW']):
-        # Create a mock Firebase user for backward compatibility
-        session['firebase_authenticated'] = True
+        # Step 1 passed - allow access to OAuth page
+        session['admin_authenticated'] = True
         session['admin_id'] = admin_id
-        session['firebase_user'] = {
-            'uid': f'admin_{admin_id}',
-            'email': f'{admin_id}@test.me',
-            'displayName': f'Admin {admin_id}',
-            'photoURL': None
-        }
-        # Note: No real Firebase token in this case
         return jsonify({
             'success': True,
-            'message': 'Legacy admin login successful (Firebase OAuth recommended)'
+            'message': 'Admin authentication successful'
         })
     
     return jsonify({
@@ -47,14 +58,17 @@ def admin_login():
     }), 401
 
 
+@admin_bp.route('/oauth')
+@admin_gate_required
+def oauth_page():
+    """Step 2: OAuth login page (requires Step 1)"""
+    return render_template('admin/oauth.html')
+
+
 @admin_bp.route('/logout', methods=['POST'])
 def admin_logout():
-    """Admin logout endpoint"""
-    session.pop('admin_authenticated', None)
-    session.pop('admin_id', None)
-    session.pop('firebase_authenticated', None)
-    session.pop('firebase_token', None)
-    session.pop('firebase_user', None)
+    """Logout - clear all session data"""
+    session.clear()
     return jsonify({
         'success': True,
         'message': 'Logged out successfully'
@@ -62,7 +76,7 @@ def admin_logout():
 
 
 @admin_bp.route('/dashboard')
-@admin_required
+@firebase_auth_required
 def admin_dashboard():
     """Admin dashboard API endpoint - returns session info"""
     firebase_user = session.get('firebase_user', {})
@@ -74,7 +88,7 @@ def admin_dashboard():
 
 
 @admin_bp.route('/session-info')
-@admin_required
+@firebase_auth_required
 def session_info():
     """Get current session information including Firebase user and token"""
     return jsonify({

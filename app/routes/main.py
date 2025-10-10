@@ -35,10 +35,17 @@ def health_check():
 
 @main_bp.route('/admin-page')
 def admin_page():
-    """Admin page - login or dashboard"""
-    if session.get('firebase_authenticated'):
-        return render_template('admin/dashboard.html')
-    return render_template('admin/login.html')
+    """Admin page - multi-step authentication flow"""
+    # Step 1: Check admin gate auth
+    if not session.get('admin_authenticated'):
+        return render_template('admin/login.html')
+    
+    # Step 2: Check Firebase OAuth
+    if not session.get('firebase_authenticated'):
+        return render_template('admin/oauth.html')
+    
+    # Both steps passed: show dashboard
+    return render_template('admin/dashboard.html')
 
 
 @main_bp.route('/uploads/<path:filename>')
