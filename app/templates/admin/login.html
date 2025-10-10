@@ -155,7 +155,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithRedirect, signInWithPopup, getRedirectResult, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         
         const errorMessage = document.getElementById('errorMessage');
         const loading = document.getElementById('loading');
@@ -168,10 +168,26 @@
             googleLoginBtn.disabled = false;
         }
         
-        function showLoading() {
+        function showLoading(message = 'Loading...') {
+            loading.textContent = message;
             loading.style.display = 'block';
             errorMessage.style.display = 'none';
             googleLoginBtn.disabled = true;
+        }
+        
+        function getUserFriendlyError(error) {
+            if (error.code === 'auth/popup-closed-by-user') {
+                return '로그인 창이 닫혔습니다. 다시 시도해주세요.';
+            } else if (error.code === 'auth/popup-blocked') {
+                return '팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용하거나, 버튼을 다시 클릭하면 새 탭에서 로그인합니다.';
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                return '이전 로그인 시도가 취소되었습니다.';
+            } else if (error.code === 'auth/network-request-failed') {
+                return '네트워크 연결을 확인해주세요.';
+            } else if (error.message) {
+                return error.message;
+            }
+            return '로그인 중 오류가 발생했습니다.';
         }
         
         // Fetch Firebase config from backend
@@ -179,13 +195,13 @@
             try {
                 const response = await fetch('/admin/firebase-config');
                 if (!response.ok) {
-                    throw new Error('Failed to load Firebase configuration');
+                    throw new Error('Firebase 설정을 불러올 수 없습니다.');
                 }
                 
                 const firebaseConfig = await response.json();
                 
                 if (!firebaseConfig.apiKey) {
-                    showError('Firebase is not configured. Please set FIREBASE_API_KEY in .env');
+                    showError('Firebase가 설정되지 않았습니다. 관리자에게 문의하세요.');
                     return null;
                 }
                 
@@ -195,26 +211,16 @@
                 
                 return auth;
             } catch (error) {
-                showError('Firebase initialization failed: ' + error.message);
+                showError('Firebase 초기화 실패: ' + error.message);
                 return null;
             }
         }
         
-        // Google Sign In
-        googleLoginBtn.addEventListener('click', async () => {
-            showLoading();
+        // Send token to backend
+        async function sendTokenToBackend(user, idToken) {
+            showLoading('로그인 중...');
             
             try {
-                const auth = await initFirebase();
-                if (!auth) return;
-                
-                const provider = new GoogleAuthProvider();
-                const result = await signInWithPopup(auth, provider);
-                
-                // Get the ID token
-                const idToken = await result.user.getIdToken();
-                
-                // Send token to backend
                 const response = await fetch('/admin/firebase-login', {
                     method: 'POST',
                     headers: {
@@ -223,10 +229,10 @@
                     body: JSON.stringify({
                         idToken: idToken,
                         user: {
-                            uid: result.user.uid,
-                            email: result.user.email,
-                            displayName: result.user.displayName,
-                            photoURL: result.user.photoURL
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL
                         }
                     })
                 });
@@ -234,19 +240,84 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Redirect to dashboard
-                    window.location.href = '/admin-page';
+                    // Success! Redirect to dashboard
+                    showLoading('로그인 성공! 리다이렉트 중...');
+                    setTimeout(() => {
+                        window.location.href = '/admin-page';
+                    }, 500);
                 } else {
-                    showError(data.error || 'Login failed');
+                    showError(data.error || '로그인에 실패했습니다.');
                 }
             } catch (error) {
-                if (error.code === 'auth/popup-closed-by-user') {
-                    showError('Login cancelled');
+                showError('서버 연결 오류: ' + error.message);
+            }
+        }
+        
+        // Check for redirect result on page load
+        async function checkRedirectResult() {
+            showLoading('로그인 확인 중...');
+            
+            const auth = await initFirebase();
+            if (!auth) return;
+            
+            try {
+                const result = await getRedirectResult(auth);
+                
+                if (result && result.user) {
+                    // User signed in via redirect
+                    const idToken = await result.user.getIdToken();
+                    await sendTokenToBackend(result.user, idToken);
                 } else {
-                    showError('Login failed: ' + error.message);
+                    // No redirect result, show login button
+                    loading.style.display = 'none';
+                    googleLoginBtn.disabled = false;
                 }
+            } catch (error) {
+                showError(getUserFriendlyError(error));
+            }
+        }
+        
+        // Try popup first, fallback to redirect
+        let popupAttempted = false;
+        
+        googleLoginBtn.addEventListener('click', async () => {
+            showLoading('Google 로그인 중...');
+            
+            try {
+                const auth = await initFirebase();
+                if (!auth) return;
+                
+                const provider = new GoogleAuthProvider();
+                
+                // Try popup first
+                if (!popupAttempted) {
+                    try {
+                        const result = await signInWithPopup(auth, provider);
+                        const idToken = await result.user.getIdToken();
+                        await sendTokenToBackend(result.user, idToken);
+                    } catch (popupError) {
+                        if (popupError.code === 'auth/popup-blocked') {
+                            // Popup blocked, switch to redirect
+                            popupAttempted = true;
+                            showError('팝업이 차단되었습니다. 새 탭으로 로그인합니다...');
+                            setTimeout(() => {
+                                signInWithRedirect(auth, provider);
+                            }, 1500);
+                        } else {
+                            throw popupError;
+                        }
+                    }
+                } else {
+                    // Use redirect directly
+                    await signInWithRedirect(auth, provider);
+                }
+            } catch (error) {
+                showError(getUserFriendlyError(error));
             }
         });
+        
+        // Check redirect result on page load
+        checkRedirectResult();
     </script>
 </body>
 </html>
