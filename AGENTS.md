@@ -204,6 +204,7 @@ List all exams for authenticated user
 Web interface for testing with Google OAuth 2.0
 
 **Authentication**:
+
 - Primary: Google OAuth 2.0 via Firebase Web SDK (recommended)
 - Legacy: Username/password with `ADMIN_ID` and `ADMIN_PW` (deprecated)
 
@@ -216,6 +217,7 @@ Web interface for testing with Google OAuth 2.0
 - User profile display with avatar and email
 
 **Implementation**:
+
 - Uses Firebase Web SDK (v10.7.1) from CDN
 - Tokens stored in server-side session (HTTPOnly)
 - Automatic token inclusion in API calls via `@require_firebase_auth` decorator

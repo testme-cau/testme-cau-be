@@ -16,14 +16,6 @@ def admin_required(f):
     return decorated_function
 
 
-@admin_bp.route('-page')
-def admin_page():
-    """Admin page - login or dashboard"""
-    if session.get('firebase_authenticated'):
-        return render_template('admin/dashboard.html')
-    return render_template('admin/login.html')
-
-
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
     """Legacy admin login endpoint (deprecated, use Firebase OAuth instead)"""

@@ -2,7 +2,7 @@
 Main routes (root endpoints)
 """
 import os
-from flask import jsonify, current_app, send_from_directory
+from flask import jsonify, current_app, send_from_directory, session, render_template
 from werkzeug.utils import safe_join
 from app.routes import main_bp
 
@@ -31,6 +31,14 @@ def health_check():
         'status': 'healthy',
         'service': 'test.me API'
     }), 200
+
+
+@main_bp.route('/admin-page')
+def admin_page():
+    """Admin page - login or dashboard"""
+    if session.get('firebase_authenticated'):
+        return render_template('admin/dashboard.html')
+    return render_template('admin/login.html')
 
 
 @main_bp.route('/uploads/<path:filename>')
