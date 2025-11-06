@@ -1,0 +1,288 @@
+﻿New note
+2025.09.23 Tue AM 11:02 ・ 51Minutes 45seconds
+최성민
+
+
+Attendees 1 01:30
+And also let's talk about the team project.
+So we're gonna do the team build on next Thursday.
+So before building team build before having a time for team building up you guys can build your team by yourself but otherwise if you guys are not going to have any a team or want to any help or team building up just okay please come to the team build session next Thursday and we I gotta give some instruction to build them okay so again next Thursday we're gonna have a team of session and that
+
+Attendees 1 02:05
+it's totally okay to build your own team by yourselves.
+But if you have any team or you have any friends in this bass that is fun you gotta do I've gotta give you some instruction to build your own team L Thursday okay so yeah that's that.
+So next Thursday we're gonna have up on October 21st we're gonna
+
+Attendees 1 02:37
+so corn loop So I think you guys are already familiar with this one right so the corn loop is used to a bit cold
+
+Attendees 1 04:59
+so five the last number is excluded okay exclude four last number.
+
+Attendees 1 05:59
+So it's commonly used to iterate over arrays or collections.
+We have covered less fast the loop you can use so the foll is useful for iterating through the arranges and collections of the given the anims okay the device have to memorize how to use the board GP different ways okay right we also know the wire okay which is also super gazy of looping the elements right so a loop why loop repeats as long as a given what condition is satisfied okay
+
+Attendees 1 06:56
+so the while will check first check the condition and then exclude this block if it is true right and then I believe that you guys to know what the difference between standard do i and do you G know do I what is the difference do first right Yeah do something the scal should be escuded first and go start the violent right that's the big difference right Yeah it's super easy so why just check condition first do while means that one the ones and then check the condition that's the difference
+
+Attendees 1 07:40
+all right super easy next one.
+So let's let's take a look at how to loop control.
+Sometimes during a loop you may want to exceed the loop or skip the next direction right so there are two ways first one is great second way is continue right So break means that exit the loop immediately right So when break is encounters loop then just loop is terminating the look is done okay so you can use it when the condition requires living the pole on tire right
+
+Attendees 1 08:30
+So there is a big difference between just exit the INTEL loop or just skip over this situation All right those are big difference between wake continue So skip the remaining cold in current deteration The controls jump back to the beginning of the loop or the next iteration right then let's think about it
+
+Attendees 1 09:07
+then it's gonna skip for 4 to 7 right The output is one
+
+Attendees 1 09:27
+There's a continuum which just skips for this current iteration and then just come down right How about there's no rain then you just break out the love right just terminate right Okay I strongly believe that you guys are already familiar with this easy peasy things right Okay so let's go to the concept of the function.
+So in coupling functions are defined with a fun cure function okay so they can take parameters as inter values and that you must also specify their types.
+
+Attendees 1 10:19
+So if you want to define a new function so you have to use the keyword fun and that you use function ling
+
+Attendees 1 10:39
+and then you should specify the type for example the okay and also if the function returns something we also have to specify the type of the return value along
+
+Attendees 1 11:09
+right that's the that's the difference.
+So so if your function returns a value you need to declare its written type Okay So this is a function with parameters and returns
+
+Attendees 1 11:41
+you can just omit it right You can just build your function like name gable integer that's it if your function does not have any written value that you can just contin specifying.
+
+Attendees 1 12:04
+So depending on whether you need input and output or both you can declare your function in different ways that's that right Okay let's take a look in more details.
+So functional patameters are defined as patameter name clone type here 오케이 빠르미로 9원 9 오케이 And then if we have multiple parameters then we can use
+
+Attendees 1 12:40
+this is very important because all values passed into the function parameters are in mus
+
+Attendees 1 13:01
+So yeah
+
+Attendees 1 13:12
+uh like this so for example dungshion dunhion name and they are supposed to be have vol here right but it's just omitted.
+And then you can define parameter name is type parameter comma parameter name It's type common Peter name is type You can define multiple panameters with each type and then you can separate each pedager by using colons right Okay also you can set a default parameter values using this operator.
+So for example what does it mean?
+
+Attendees 1 14:04
+So name one is training name two intiter equal 1 507 What does it mean if this function couldn't receive any value
+
+Attendees 1 14:28
+right This is I will use the default value for this part of bit right so age so this is default value 4 NaN two in case no value is provided to this patent understands
+
+Attendees 1 14:52
+so you can use named arguments when calling a function which can make your code more clear when you have men in panes.
+So anyway the culturing cerators are quite similar to you have used them in other languages which is not that different from other languages right Any questions?
+So far too easy Yeah I know.
+Okay let's move to the next one class So it's simple right What what is the cost?
+A way to group functions and variables together
+
+Attendees 1 15:32
+under a single name Poor What easier use you can combine multiple functions variables into something like together into a single name which is a class in colon right So for example there is a class right and then you can for this class you can define some variables like this or functions like this right So for example for a string class there is a functions for returning stream lands on cinate strings or compare strings like this these are functions provided by string cuts say
+
+Attendees 1 16:22
+so yeah all these functions are collected inside the stream class So yeah The idea of class is that um you can put some required the functional variables to the plants we have we can define So this is also not that different from the definition of past in other languages Okay Okay So then how do we write a class How do you use a class?
+You can also define a class name and use the class keyword in front of it sure so class and the class name and verses and then you can
+
+Attendees 1 17:05
+put some functions variables inside of this tax Okay that's how we can define a new tax by your own right So this is base structure Understand and then we can also think about the primary constructure What is this?
+So a primary constructor defined with heather so you can use the constructor keyword
+
+Attendees 1 17:44
+and then constructed here
+
+Attendees 1 18:11
+so these are same Okay you can commit this construct of keyword Actually this is the primary constructor.
+How about the secondary constructor?
+You can just put
+
+Attendees 1 18:53
+this is primary constructor okay so yeah you can use primary construct term second construct or default constructor like this You can choose whatever depending on the type of class you want to define Okay all right then this is this was just for defining a class but actually to use a class then why can you do that?
+You have to you have to call you have to create an instance right So this was just
+
+Attendees 1 19:37
+okay but we need to build create actual instance of past right To do that you can use parenthesis after class name to call the constructor in Korean instance okay like this.
+
+Attendees 1 20:02
+So when you use a class you add a parentheses after the class name and which can be called the constructor and create an instance.
+So only after creating an instance then you can actually use the class right only defining a class you cannot you cannot do anything right You have to you have to generate an instance of the passp So once you assign the instance to a variable then you can use the functions the variables and you feel fine the same class like this So this
+
+Attendees 1 21:03
+using that operator Remember that so for example if you want to use the for example there is a class
+
+Attendees 1 21:33
+If you want to use this function How can you do that?
+Opening right So if you want to use variables or function which has been defined in the class then you can use that operator all right Okay too easy next one object So in cockling when you declare something with the object keyword it becomes a single term which means only one instance exists across the entire application.
+
+Attendees 1 22:56
+So um you know in any constructor that just properties of methods can be accessed directly using this object name.
+If you use the object CE
+
+Attendees 1 23:17
+we want to use these fat in the main function we can call it logal
+
+Attendees 1 23:33
+what does mean? So without calling any instant you don't need to instantiate the pass you can just directly use them because objective keyword means that there's only one single instance has been created in your application with family access during the entire pack Okay so you don't have to separately install shape for this pass this is the object here Okay then let's move to the data class which is a little bit important okay
+
+Attendees 1 24:09
+So data class is used for storing simple values Okay you can declare it by adding
+
+Attendees 1 24:35
+to indicate whether this property is notable or real Right anyway So what is the main key feature of the dir class?
+First of all this can be used for value companies
+
+Attendees 1 25:02
+equality operator. We can compare actual value not the memory address the actual value of the classes between two classes
+
+Attendees 1 25:23
+function Okay so instead of printing the instant address it just print out actual value using this true string function Okay so this is the main feature of the data class Okay
+
+Attendees 1 25:53
+Okay so you have to memorize the main key feature of the plats like this.
+Now let's move to the inheritance.
+So inheritance means that the actually kind of reusing a parent class right so the child class can inherit something from the the parent class like variables functions etc Right
+
+Attendees 1 26:36
+So what is the key point of the inheritance in Coffling?
+First thing is first thing you have to memorize is that um parent classes are final time by default
+
+Attendees 1 27:03
+to inherit something you have to do additional thing which is open CE
+
+Attendees 1 27:23
+as a parent you have to use open kewer in front of the class C Otherwise you cannot inherit anything from that class right So use the open keyword to your parent has allows massive properties to be in which is very important and then a tri class it must called the parent call structure like this.
+So in try class So I'm sorry this is parclass and this is triplass
+
+Attendees 1 28:19
+This should be done to inherit something from your parents Okay so this is the key point of using the inheritance in Cling otherwise the other things are the same as other languages Okay all right Also there are some more key points.
+First one is passing constructor pan.
+So if panent class has constructor pan meterans then the chan class must pass value to the panent constructor right I'm also using parent members so if the child can use parent properties methods if they are there own okay
+
+Attendees 1 29:21
+then there might be a punishment like this on the voting and there is a try class.
+
+Attendees 1 29:50
+So anyway so to make this class inheritable first we have to use open keyword here right
+
+Attendees 1 30:08
+you also use the open keyword in front of the function name as well Okay this is very important 오케이 And then this function can be inherited override in the tried class We can use override
+
+Attendees 1 30:41
+So don't forget to use open cumor in P class to make it inheritable through the cass right And I think that all of you guys know what the override is right You guys know overwriting right So overwriting means that you can you can redefine the function in the pannx right So to override the function the function you can use the override keyword in front of the function name Also definitely the original function should be open
+
+Attendees 1 31:35
+all right So that was the basic concept of the complain syntax Okay let's go to the design tool perspective Okay so when programming you can just you can have just some kind of tasks like classify naming or booping directories right So we can you can think about concept three kind of concepts for designing your application Axygen abstraction interfaces What is the package kind of the directory structure we can design right So the directory structure to manage your resource find resource fire
+
+Attendees 1 32:24
+right So you can put multiple files in your own structure to effectively manage your source code and assets of your own cation in the same pad pit right This is the pan page.
+What is an abstraction? When your source code is not yet implemented perfectly you can just leave them as a You can just design with the abstract tip the class names or function names with abstract keyword right
+
+Attendees 1 33:00
+So when cold design is not yet clear only method names are written while the implementation is deferred right then you can just ass a cure to declare abstraction same for the interface right So interface for like the ARA class that contains only Mantel's names without any implication C.
+So before starting your programming you can just design the entire structure of your application first
+
+Attendees 1 33:29
+and then you can just name a naming you can do the naming for the each class and then you can naming for the each interfaces first and then you can see okay My AD is organized like this and this class is gonna interact with this class and then we're gonna use this interface to interact between this
+
+Attendees 1 33:48
+classes something like that.
+But after this design then you can start your programming right This is how we can design your application using packaging concept mstration concept and interface concept right all right and then if you have designed the like entire structure of your location then you can you can use the visibility modifier for each classes and functions ORS private internal projective public
+
+Attendees 1 34:27
+I'm sorry. So all these modifiers can be applied to the classes interfaces functions or vs private not accessible for houser funds right interner accessible only really in the same Model protected same as private but accessible from child tests in inheritance public accessible from all FS without instruction This is the default right so by default public all the files classes functional rados are public but when you design your location afterwards designing your classes
+
+Attendees 1 35:08
+object functions interfaces then you have to consider how can you make some part of this module should be private and some part of the classes should be protected and all of these parts should be public something like that so you have to make decisions for your application all right So yeah when viability modifier applying they restrict the use of corresponding classes member property or methods definitely that's all right let's go.
+And then no safety which is
+
+Attendees 1 35:48
+the most important concept which you can become in your RE exam right It is the most important right because this is a key feature of culting.
+So as mentioned before culting provides low safety
+
+Attendees 1 36:17
+from the adult's life. Long point exception okay usually is the cool feature of a coton.
+So first of all nullability so if you want to make the time nullable
+
+Attendees 1 36:39
+which means that okay this variable is known what is knownable
+
+Attendees 1 36:53
+so without this operator any values in copy cannot be unn okay So this is a very important feature of cy.
+
+Attendees 1 37:30
+So this name variable whose type is string is a novel because we have we have specified this operator here okay which means that this name can be known or otherwise you can put some value in here okay and
+
+Attendees 1 37:59
+function also can be I'm sorry.
+So the same for the variable A function parameters also can be normal so we can also use the this cer to see if this function is normal function panometer is normal for example function
+
+Attendees 1 39:16
+best marked here which means that the ribn type is norm okay so you can it can specify the variable if the variable if the function parameter if the written type is molable by using this caption mark gram okay so you must explicitly declare whether these parameters written times can be know
+
+Attendees 1 39:51
+and also the other cool feature is that you can use pass mark and duck together to cheap mone Okay So like this can be used together after a normal variable which means that if the variable is known the method of the property of this operator is not cold.
+If the bar is not normal the method property is dcuted normal you understand let's see function task safe call string SDR grave name as string time
+
+Attendees 1 40:39
+which means that this parameter is nullable and that interior pestomer which means that written type is also knowllable and then as you can see that variable region null iniger which is nullable and then you can see the stream pomer lens
+
+Attendees 1 41:06
+it is no This function is not called okay otherwise otherwise I'm sorry without checking the lands just return the num otherwise just do normally checking the lands
+
+Attendees 1 41:31
+string STR values null without calling this function just return the null value Okay otherwise just do a normal thing just checking the lens returning the lens the sdrum understand So what does it mean?
+So why do we do need this one?
+This one is for preventing N point exception right without this one there might be fashion based on the n point exception right but with this operator we can prevent the situation if only this
+
+Attendees 1 42:14
+where we not know then we can return the time otherwise just return the know that's it This is very important whether the same call
+
+Attendees 1 42:29
+and also um to replace a NLL value and colet you can use pasture mark with common together which is called the ebis or planer to settle different value than the original value.
+Variable is known so in the variable is known the value is returned if the vers not know the valvision easy so for example for this string variable and you can see that I'm sorry here so there is a
+
+Attendees 1 43:27
+if streaming land is not known then actual value is never returned again.
+Stream
+
+Attendees 1 44:06
+preventing long point exception crashes Okay so these are very very important feature of ming So is say which can be shown in your Vito exam if you have to memorize the difference between the three of please okay
+
+Attendees 1 45:00
+here is the value after this one has defult when the bar is not okay so everything is for preventing mphone exemption okay right and then the other also important thing is late initialization you have to memorize.
+So for example there is a possibility that so you guys will know what the null of the verticle is right that there is a possibility that there might be too many null of repraver in your sourcecome right which is gonna be a little bit annoying.
+So to prevent to prevent overuse of normal
+
+Attendees 1 45:47
+although you smallable you can use lay initialization okay so so in normally in normal you might declare a gable as normable and then initialize later right but we can make it make it initialized later by using a special
+
+Attendees 1 46:23
+with this late initialization we can declare variable without initialization immediately You can do it later you can still keep it as a not know for now you can do something later okay so this is only for used to class for for this city variable and ns lob cannot be used primitive types of individual long double flow Okay so you have to memorize this one and then this is only for the vride
+
+Attendees 1 47:09
+This is also the late initialization for the verbal type which is being which is on the rhythm Okay
+
+Attendees 1 47:27
+for the only variables we can use leggy So all those are same for initializ initialization should be def by using the nally this keyword okay so you have to memory this one and then okay The last one is the scull function so um which is not that important so you can you just take a look at it.
+So there are two different types of scope functions run and let.
+So run for example like um you can use you can use this as a receiver like this for example
+
+Attendees 1 48:57
+we function then you can use this receiver or you can use function like lab
+
+Attendees 1 49:15
+receiver like this so we call them these basic functions one applied with.
+So when you want to do direct access to properus of vessel you can use this this keyword Okay otherwise there are it based functions If you want to treat the object as an argument inside a block then you can use it killer.
+So yeah you don't have to memorize this one just refer to what we can Women that that's it.
+
+Attendees 1 50:08
+So anyway you guys have to memorize that.
+There's a video you guys have might watch before coming to the next lab session okay all right thank you guys see Ursday.
+
+
+clovanote.naver.com

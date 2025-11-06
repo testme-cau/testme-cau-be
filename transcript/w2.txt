@@ -1,0 +1,315 @@
+﻿New note
+2025.09.09 Tue AM 11:03 ・ 41Minutes 43seconds
+최성민
+
+
+Attendees 1 00:00
+Distribute through the Google Play Store it is an official store right and then beside that you can also distribute your own app I'm based on your own package file which is called as APK file right 키지 file.
+So you can download apps from Google Play Store or you can distribute your own app using this AK file right Maybe most of the guys know about that
+
+Attendees 1 00:33
+and let's take a look at the Android oping system.
+So the structure of the under platform is basically a combination of Linuxs color and the Java API framework.
+So actually um in the past
+
+Attendees 1 00:56
+actually actually well strictly speaking it is Dolvie version machine but we used to have this some JBM because the Java version machine had always been a baseline for running Underoid platform.
+So you just have to memorize the TOM as JBM which is for under the framework.
+And then the new version this has been replaced what is called as Art.
+So the current version Android is based under the framework it is running based on the ART under run time Okay so although JBM is no longer used
+
+Attendees 1 01:33
+but the system still runs a merchant machine.
+So in that sense we continue to follow the Java execution Model that's why this framework is basically running on the Java framework.
+And then um also you guys have to memorize is there is a two different types of the packaging file for Android publication.
+The first one is APK and the other one is Aab.
+Have you guys heard a bit you know what it is what the difference is okay So apk is the sperad packaging file
+
+Attendees 1 02:12
+which is used for installing your apps on under devices because this is what Ovisual file.
+And then recently the new types of file has been introduced which is called AAB file Android App bundle.
+
+Attendees 1 02:34
+So this is kind of light weight file for installing your application but actually it is only supported by the Google Play Store okay so when you publishing your own app to Google Play Store you have to you have to upload your file on this won for now okay
+
+Attendees 1 03:04
+anyway yeah so you have to you have to memorize do two different types of outputs you can you can make you can create for your application.
+
+Attendees 1 03:19
+And now let's talk about the Android operating system of structure.
+So you can see that at the very bottom of this there is a Linux column here okay and then Androys basically open source software stab built on lims okay and on top of that there's an Android one time which is most important for us a so this is a one time use to one your application okay and above that there is a Java API framework this is for all developers to use when creating your own apps.
+And finally at the very top
+
+Attendees 1 04:05
+the system as all other applications are running on the very top of this framework okay so you don't have you don't have to memorize all of these things but you have to understand how your app is running on this structure okay
+
+Attendees 1 04:26
+all right so in Java virtual machine Java source code is compiled into class file like this.
+I'm sorry that the slide has not been fully translated into the English yet but the fully translated version will be unloaded show me okay anyway so in traditional the Java code can be compiled to the bite code which is the classified okay but in the case of Android these Java code Java source Java source code are not discuted directly at one time.
+
+Attendees 1 05:08
+So it is compiled first compiled to the Java Bite code class file and then again one more compiled into the dex file which is supported by Android one time later.
+So Java source code is compiled into Classifi and these are excluded on the JBM.
+But as you can see here ja Jaba pycood classified is compiled once more into the next fire for Android apps.
+And then this next file is once on art under the one time Mrop.
+So you have to understand this flow to run your map
+
+Attendees 1 06:04
+okay let's and then let's take a look at the Android versions.
+So in Android beside the platform version there's also something called AP1 this is really important.
+So if you look at the table here you can see the platform versions like this is platform version and code name API level and Vergen code.
+So you can see that you can see the platform versions like 12 0 11 0 etc.
+And to the right you can see the called names like this
+
+Attendees 1 06:52
+and then also you can see the API levels like thirteen thirty one thirty twenty nine etcetera and also depending there might be a Virgin cold here.
+So anyway so depending on the API level so new features can be introduced to the framework.
+That is really really like annoying things for the developers because sometimes the entire code can be changed based on the newly introduced features or like libraries etc.
+
+Attendees 1 07:27
+So even if the latest version is in like for example under 12 you can practice the version they use can actually use different types of API levels that is possible.
+So that's why important we always have to check the APR level when we are developing new applications for improving the existing applications.
+So also on the on this right side as you can see that a chart showing the distribution of the ppform which is really not important but just for reference as you can see that
+
+Attendees 1 08:03
+um for depending on different types of versions the distribution is quite different.
+So you can check the latest distribution on the annual development website if you want to see it okay and so that was really really big part of our let's talk about the cold swing.
+So Cling is a program language created by a company called Jack Grain.
+So in the past actually Java was practically the main language for Android programming Android apps.
+And
+
+Attendees 1 08:45
+twenty seventeen May at Google I O Cottoning was announced as unofficial language okay so from that point many components start to adopt the pin as Abbot.
+So and then as I mentioned last week so actually my digitation was about Anth security and then I got I got my PhD Maybe my defense was December 2017 so at that time I didn't I no idea I had no idea about the culting at the times.
+I did everything by JAMA native form.
+
+Attendees 1 09:24
+So anyway so all of our development was entirely in job at that time but from that moment Cottin started to be used from WorldWide under that program.
+Anyway after that Calter started being used more and more now it's become official language for now actually.
+So this is why in this course we need to we need to be using Calternum as a main language okay if you look at this figure here you can see how Cotin first appeared.
+In 2011 Cotin
+
+Attendees 1 10:08
+introduced as open source project and then 2016 version 1.0 released and then
+
+Attendees 1 10:25
+the other version start to introduce this so it started to be widely used right now.
+So let's take at the main features of Cpling.
+Cpling basically follows the concept of Bong Shunler program.
+So in traditional object oriented programming lossy the cold logic should be written inside of a class okay for example for this Java based object oriented programming you have to make your own logic inside of class okay
+
+Attendees 1 11:12
+but in function programming you are not restricted you can type in you can revil your function anywhere in the code that's why we call it function programming
+
+Attendees 1 11:28
+however so when you develop underd as you still need to write a logic inside classic and copling just like object or programming.
+So in that sense it's actual signature traditional object or programming and especially for URS anyway that is not important anyway the cool thing is culturing is one person compatible with Java that's a cool thing.
+So and then as you can see here writing cold in Copland is pretty much simpler compared to Java so you can see an example of Botton activity the Java
+
+Attendees 1 12:07
+and then for the same functionality in the Cing code it is pretty much simpler and easier to read okay
+
+Attendees 1 12:30
+you can talk now we have to talk about a very important concept in Android the components.
+Have you heard about the component in your programming right so component is really important especially for Android programs.
+So um a component is basically a building block for creating an application so it's it's kind of basic munic or bring your app component basically.
+So UM components are basically independent from each other okay so they are not dependent or they do not create cold coupling
+
+Attendees 1 13:07
+there are each component separate so in other words its component is independent of excretion used within the app.
+So if you look at this diagram on the lab in application there's components it's basically made of multiple components and in the case of Android app
+
+Attendees 1 13:44
+so Android app is made up of multiple component classs okay then what is the component class?
+So can you say that all classes in Android app are components?
+No they are different okay so an app is made of many classes okay but some of them might be component classes some of some others may be just regular classes you know so forth okay 이렇게 So if you look at the diagram here in the left there's a component PL okay there might be regular classes they are quite different okay
+
+Attendees 1 14:32
+so what is the difference between those two
+
+Attendees 1 14:40
+blue and white What is the difference?
+So the most important most important key difference is that the life cycle.
+So for the classes the regular classes are basically created by osvs okay by development so the life cycle is based on the it depends on the user managed by ourselves but component class the life cycles of component class is managed by the Android frameer that is key difference between those two classes Okay so you have to memorize the differences
+
+Attendees 1 15:24
+So that's the component classes and in Android the component classes are defined into four main types which is really really important for us okay activity service content provider and BroadCast receiver so each has a different role in under the app Okay so first one activity is a component for handling user interface so just showing the interface for users okay activity the second one service running on the background
+
+Attendees 1 16:07
+you can see the interface service is just running on the background okay so back up back up 요 and the third content provider for sharing or managing data for application kind of resources images like videos etc.
+And the last one is BroadCast receiver which is for handling reacting the events inside of system.
+So what are the events?
+
+Attendees 1 16:50
+Currently it seems high but now it has tons of event so kind of WiFi signals battery signals like your touch temperature etcetera Okay so all of these things can be handled by events concepts.
+So a BroadCast receiver is handling specific events to react to make a reaction to your own application Okay so you have to memorize what the difference between these four components to design your own obligation Okay
+
+Attendees 1 17:31
+so when you develop an app how do you design?
+The components depend on the functions or interfaces your app requires.
+For example there are four different apps so there might be an app only comprising only activities or just single activity that is one.
+It depends how you design the map or like an FC there must be an FC who contains one activity and one content that is fine So it is totally up to you guys Totally totally totally alto How we design an application
+
+Attendees 1 18:12
+How many components and what kind of components compris for your application Okay so as I mentioned earlier since these are pretty defined classes managed by Androidge Framer so you can use them by inheriting from those classes and implementing your own your own definitions.
+
+Attendees 1 18:44
+So what is the actual process of developing an Android app?
+First write the source code then using the building command you can build an app into Android Pactive F a source code and build and then Android package of file Unland This packaged app AP file can be registered and uploaded to the Google Play store so registered and then on the SMARTP user can open the Play store and then I'll choose the app and click on Install and then this app can be installed in the devices.
+
+Attendees 1 19:36
+This is like higher level flow for developing an app and installing app which can be used by users.
+Now let's take a look at more detail Okay so at the very bottom of the diagram verse white source P by Android Studio So this is my computer This is Google Play Store This is Smartphone O So here in my computer side we can write our subscript using Andrey's Studio and then we can create a package file here apk file Okay
+
+Attendees 1 20:28
+whose name is Apk Manager who is in charge of managing creating your own apk file and then at that time it required a specific password which is developers's key Okay so whenever you create your own fick file you have to use your own key before registering your appput to the group story Why do we need a key developer key Sure to secure your application to certificate Your own app is developed by yourself Okay so you have to So
+
+Attendees 1 21:10
+in this lab session we gotta build our own lab and then at that time we have to you guys have to create your own key which is really important for your application Your certificate your app is originate by our set Okay so Yeah that is called a kind of key and password and then based on your key and then the Apk manager create an apk file which contains application and your own key Okay Okay so once this process is done and then this file is uploaded
+
+Attendees 1 22:03
+any apps flying No There might be a validation process by Google Play Store kind of app review process is going for checking app is like any app has any security issues or app runs correctly etc.
+So there's a validation process like soul and then everything is fine then the app is registered and becomes available for down on one Play Store okay now then your app is
+
+Attendees 1 22:47
+security valation module for Google Play Store so it's almost adopted by Google Play Store but at the last minute it has been dismissed but yeah that was my main research for my PhD.
+Anyway on the Smartphone side here 유전 you can see the list for compatible apps which is compatible with our own Smartphone devices.
+What does it mean compatible
+
+Attendees 1 23:20
+your operating system and the API level depending on the API level of the application and your operating system there might be different types of apps you can install.
+
+Attendees 1 23:35
+So based on the compatibility the app list can be different for you guys.
+Anyway user can click an app which should be installed in your devices and during the installation the app is recompiled into the excusable file that on the Linux inside under form recompile.
+And then at this moment the other important thing is going which means permission request.
+So so whenever you install something have it shows a lot of powers right cask for like microphone your contact
+
+Attendees 1 24:20
+phone etcetera right so a provisional request appear like a lot of assets for basically requested by this application.
+And then if the user grants the permission then the AD is installed and all the necessary files can be compiled to reveal.
+
+Attendees 1 24:54
+And then let's take a look at each step in details.
+As you know the build process includes the compilations compile compilation is a process of converting source code into the Martian CH source code is actually human readable code and then marchine code is actually computer king Okay
+
+Attendees 1 25:25
+it means that linking the combined motion code with the libraries to create on one final cut by right so when both compilation and linking are completed the BID process is finalized.
+The compile is for translating the source code into the motion code and the linking is for linking motion code written lights these two processes are finalized then your build is done.
+
+Attendees 1 26:07
+So what about the BILL process in Android?
+There's a lot of one key difference in Android Bill.
+One key difference compared to Linux compilation is the concept of resource.
+
+Attendees 1 26:23
+So if you look at this diagram there's an application module dependency as a source code and resource.
+So in application Model the source code and resource are combined together in the compilation process and on top of that these dependencies such as library modules or external libraries can be included.
+And then basically so as I mentioned earlier the Andrebill process goes through two compilation steps.
+First the code is converted to the VI post.
+
+Attendees 1 27:04
+Second step the APK files generally and then this means that the process from dex to APK files right So this is set 1 and this is set two right So based on storage pod and research compiled by compiler this is step 1 build to the desk file and then combining with the key.
+
+Attendees 1 27:40
+So this is what he called a real process in Andrew Okay and another difference is that in Lenic install application run directly in the top level of application layer on if Android as we saw earlier in the one on the middle layer what was named art and the one time that is kind of the key difference between application with Linux and application with and okay boring boring way Yeah the basic concepts are always bing of that's right.
+
+Attendees 1 28:21
+Okay now let's talk about the Jatpack concept.
+So have you learned about the Jet pack compst Jack No Okay so um in Android development really really annoying thing is version fragmentation right as I mentioned earlier there's tons of versions and tons of APL level different types of APL levels right this means that the apps can behave differently on different devices on like different Apis.
+That is really really on going problem in under program we just call this version fragmentation issues.
+So
+
+Attendees 1 29:05
+developers have to like repeated jobs to whenever the version is updated and then new API is retroduced so which is really annoying.
+So Android announced the specific type of the tact of libraries whose name is Jampack.
+So this is official library kind of a collection of official libraries provided by Google maybe like 90 libraries are concluded is Japan.
+So based on these libraries we will try to solve this problem caused by fragmentation.
+
+Attendees 1 29:44
+So um Japack has four advantages.
+First one consistent lager Yeah so it works the same across all versions and devices which is really cool for us right?
+Second backward compatibility so you can use the latest APIS while still supponing older versions which can reduce the pressures actually third reduced bleplate code so it cuts unnecessary words like background TS like LSCAL management etcetera.
+So this is actually most of libraries world right
+
+Attendees 1 30:23
+and then lower complexity so it simplifies your call and makes maintenance easier Yeah does that.
+So anyway so Jam Pack is a very very important library concept and it's something you have to memorate so we gonna handle we gotta with something in the lab session later.
+Anyway yeah you just have to memorize what the Japan compose is all right then let's go to the Android studio.
+So um so we're gonna use them throughout this semester for programming.
+
+Attendees 1 30:59
+So this is the base interface for and studio.
+On top of that you can see the main menu right menuus and on the other side there are navigation menus like this and two balls and then at the bottom you to find navigation menu two balls and two winds Okay and then leapside like kind of project management area as you can see kind of some kind of directory here and then in the center there is an editor for programming and then you can see also a panels
+
+Attendees 1 31:39
+for news update or other tool Windows right so you you working on the studio you get more familiar throughout the semester So yeah don't worry about about the interface right now.
+
+Attendees 1 31:56
+So um later when you after this pass you guys have to install and studio by yourself but most most important so everything is just going through the video just follow the video everything is gonna be fine but one thing you have to memorize is Android SDK BST be in STL
+
+Attendees 1 32:26
+which is software development kit which should be installed when you are installing the under studio Okay so there are four components which must be installed and M first one Android SK build tools second one Android amulator to run in your own apps Third Android Eschatic Platform tools fourth intern envulator Asillator.
+So these forms are mandatory for developing your own app so don't worry about for now because everything is on the video but anyway
+
+Attendees 1 33:07
+you have to check these four things are being checked when you're installing the under studio Okay
+
+Attendees 1 33:26
+so coming back to the interface there was a session for Androids director you like so all your work is organized under based on Android project so this is basic unit for managing your own application project Okay so like under project acts like the top level directory but your source code images and resources are systemically advantaged Okay
+
+Attendees 1 34:04
+you can see the information of your project in this project management area and then by default can you see the
+
+Attendees 1 34:31
+so actually in this project management area there are two different types of views we can choose.
+First one is Andre view second one is a project view those are commonly used a view for programmers so like this for the let's take a look at and view
+
+Attendees 1 35:06
+and then when clicked the list of you the project and review can be used this.
+So if you choose Andre view here if you click your project you can see the view like this this is angry view
+
+Attendees 1 35:30
+so there are two main components main parts of Underview.
+First one is at part
+
+Attendees 1 35:49
+so in this app section you can see all the fires generated one you are programming Okay in this gradal crept session you can set up the configuration information for building your own app Okay so this is for your app development this is for building your application These two sections are different Okay
+
+Attendees 1 36:27
+so many files contain the information related to the installation of application so this is for installation information and the JOBA is definitely for source code like this source code
+
+Attendees 1 36:56
+okay so this structure enable us to systematically organize and manage our own project and research project finance and resources okay All right and the other view project view so if you choose a project here and it shows a different view for your project So so this is for actually when you need to like have muges like screen size manipulating screen sizes and changing resources then project views might be more convenient compared to the underid view
+
+Attendees 1 37:38
+because like this at the top level you can see the app directory here which contains all the app contents here
+
+Attendees 1 37:58
+so this include CLD libraries images and more everything is here so instead you can find search related rets like travel resources
+
+Attendees 1 38:19
+as you can see that underview and project view shows completely different ways for your project so you can choose whichever view makes your work more easier okay
+
+Attendees 1 38:41
+so I think that most of you guys are using iPhone I guess right iPhone raise your hand yes yes so um so we don't have any Android Smartphone maybe right so that's that's why we need a new eler for program okay so if you have to compile your own app
+
+Attendees 1 39:18
+available for life users which is really inconvenient for programmers right so we can set up a virtual Smartphone and run your app right away that's the ambit of Rosy world.
+So we can, we can create our own virtual device on your under studio so you can like it actually act like a rear Smartphone so you can copy an app onto it and run it and you can see how your app actually works with the Smartphone view.
+
+Attendees 1 39:54
+All right that's that's the end of so um and under the studio you can up from the AV manager andoy virtual device manager to create your own virtual device and you can even choose your type of Smartphone and type of OS version by yourself.
+So you can build your virtual machine in your under studio and then you can cast and devolve your own app by using the emlayer Yeah that's what you call an there.
+So everything is gotta be helpful in included in the video.
+So yeah don't worry by
+
+Attendees 1 40:41
+right that's it. So that was the really basic concept and really, really basic things for under and cultural development.
+Do any questions so Quire Okay so this is for the first hour of this class so that's it and then I have uploaded my video for the hands on project.
+So you can watch the video here or you can go home what topic you do by yourself Okay you happy with that?
+All right See you during.
+Thank you guys.
+
+
+clovanote.naver.com
