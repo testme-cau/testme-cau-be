@@ -1,49 +1,46 @@
 """
-Exam routes (exam generation and management)
+Exam routes (exam generation and management) - FastAPI version
 """
-import os
 from datetime import datetime
-from flask import request, jsonify, current_app
+from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import firestore
-from app.routes import api_bp
-from app.routes.api import require_firebase_auth
-from app.services.gpt_service import GPTService
+
+from app.dependencies.auth import get_current_user
+from app.dependencies.ai_service import get_ai_service_dependency
+from app.services.ai_service_interface import AIServiceInterface
 from app.services.firebase_storage import FirebaseStorageService
+from app.models.requests import ExamGenerationRequest
+from app.models.responses import ExamResponse, ExamListResponse, ExamInfo
+from app.models.domain import Exam
+
+router = APIRouter(tags=["exam"])
 
 
-@api_bp.route('/exam/generate', methods=['POST'])
-@require_firebase_auth
-def generate_exam():
+@router.post("/generate", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+async def generate_exam(
+    request: ExamGenerationRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+    ai_service: AIServiceInterface = Depends(get_ai_service_dependency)
+):
     """
     Generate exam from PDF
     
-    Request Body:
-        {
-            "pdf_id": "uuid",
-            "num_questions": 10,
-            "difficulty": "medium"
-        }
+    - **pdf_id**: UUID of the uploaded PDF
+    - **num_questions**: Number of questions to generate (1-50)
+    - **difficulty**: Difficulty level (easy, medium, hard)
+    - **ai_provider**: AI provider to use (gpt or gemini) - optional query parameter
     
-    Response:
-        {
-            "success": true,
-            "exam_id": "uuid",
-            "questions": [...],
-            "total_points": 100,
-            "estimated_time": 60
-        }
+    Requires authentication
+    
+    Returns:
+        ExamResponse with generated questions
     """
     try:
-        user_uid = request.user['uid']
-        data = request.get_json()
-        
-        # Validate request
-        pdf_id = data.get('pdf_id')
-        if not pdf_id:
-            return jsonify({'error': 'pdf_id is required'}), 400
-        
-        num_questions = data.get('num_questions', 10)
-        difficulty = data.get('difficulty', 'medium')
+        user_uid = user['uid']
+        pdf_id = request.pdf_id
+        num_questions = request.num_questions
+        difficulty = request.difficulty
         
         # Get PDF metadata from Firestore
         db = firestore.client()
@@ -51,21 +48,26 @@ def generate_exam():
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:
-            return jsonify({'error': 'PDF not found'}), 404
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='PDF not found'
+            )
         
         pdf_data = pdf_doc.to_dict()
         
         # Verify ownership
         if pdf_data.get('user_id') != user_uid:
-            return jsonify({'error': 'Unauthorized'}), 403
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Unauthorized'
+            )
         
         # Download PDF from Firebase Storage
         storage_service = FirebaseStorageService()
         pdf_bytes = storage_service.download_file(pdf_data['storage_path'])
         
-        # Generate exam using GPT (GPT will read the PDF directly)
-        gpt_service = GPTService(api_key=current_app.config['OPENAI_API_KEY'])
-        generation_result = gpt_service.generate_exam_from_pdf(
+        # Generate exam using AI service
+        generation_result = ai_service.generate_exam_from_pdf(
             pdf_bytes,
             pdf_data['original_filename'],
             num_questions=num_questions,
@@ -73,10 +75,10 @@ def generate_exam():
         )
         
         if not generation_result['success']:
-            return jsonify({
-                'error': 'Failed to generate exam',
-                'details': generation_result.get('error')
-            }), 500
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate exam: {generation_result.get('error', 'Unknown error')}"
+            )
         
         exam_data = generation_result['exam']
         
@@ -95,42 +97,48 @@ def generate_exam():
             'num_questions': num_questions,
             'difficulty': difficulty,
             'created_at': firestore.SERVER_TIMESTAMP,
-            'status': 'active'
+            'status': 'active',
+            'ai_provider': ai_service.provider_name
         }
         
         exam_ref.set(exam_record)
         
-        return jsonify({
-            'success': True,
-            'exam_id': exam_id,
-            'questions': exam_data['questions'],
-            'total_points': exam_data['total_points'],
-            'estimated_time': exam_data['estimated_time'],
-            'created_at': datetime.utcnow().isoformat()
-        }), 201
+        return ExamResponse(
+            success=True,
+            exam_id=exam_id,
+            questions=exam_data['questions'],
+            total_points=exam_data['total_points'],
+            estimated_time=exam_data['estimated_time'],
+            created_at=datetime.utcnow(),
+            ai_provider=ai_service.provider_name
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        current_app.logger.error(f'Exam generation failed: {e}')
-        return jsonify({'error': 'Exam generation failed', 'details': str(e)}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Exam generation failed: {str(e)}'
+        )
 
 
-@api_bp.route('/exam/<exam_id>', methods=['GET'])
-@require_firebase_auth
-def get_exam(exam_id):
+@router.get("/{exam_id}", response_model=Dict[str, Any])
+async def get_exam(
+    exam_id: str,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Get exam details
     
-    Args:
-        exam_id: Exam ID
+    - **exam_id**: Exam ID
     
-    Response:
-        {
-            "success": true,
-            "exam": {...}
-        }
+    Requires authentication
+    
+    Returns:
+        Exam details
     """
     try:
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Get exam from Firestore
         db = firestore.client()
@@ -138,38 +146,46 @@ def get_exam(exam_id):
         exam_doc = exam_ref.get()
         
         if not exam_doc.exists:
-            return jsonify({'error': 'Exam not found'}), 404
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Exam not found'
+            )
         
         exam_data = exam_doc.to_dict()
         
         # Verify ownership
         if exam_data.get('user_id') != user_uid:
-            return jsonify({'error': 'Unauthorized'}), 403
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Unauthorized'
+            )
         
-        return jsonify({
+        return {
             'success': True,
             'exam': exam_data
-        })
+        }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        current_app.logger.error(f'Get exam failed: {e}')
-        return jsonify({'error': 'Failed to get exam', 'details': str(e)}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Failed to get exam: {str(e)}'
+        )
 
 
-@api_bp.route('/exam/list', methods=['GET'])
-@require_firebase_auth
-def list_exams():
+@router.get("/list", response_model=ExamListResponse)
+async def list_exams(user: Dict[str, Any] = Depends(get_current_user)):
     """
     List all exams for current user
     
-    Response:
-        {
-            "success": true,
-            "exams": [...]
-        }
+    Requires authentication
+    
+    Returns:
+        ExamListResponse with list of exams
     """
     try:
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Get all exams for user
         db = firestore.client()
@@ -179,23 +195,25 @@ def list_exams():
         exam_list = []
         for exam in exams:
             exam_data = exam.to_dict()
-            exam_list.append({
-                'exam_id': exam_data['exam_id'],
-                'pdf_id': exam_data.get('pdf_id'),
-                'num_questions': exam_data.get('num_questions'),
-                'total_points': exam_data.get('total_points'),
-                'difficulty': exam_data.get('difficulty'),
-                'created_at': exam_data.get('created_at'),
-                'status': exam_data.get('status')
-            })
+            exam_list.append(ExamInfo(
+                exam_id=exam_data['exam_id'],
+                pdf_id=exam_data.get('pdf_id'),
+                num_questions=exam_data.get('num_questions', 0),
+                total_points=exam_data.get('total_points', 0),
+                difficulty=exam_data.get('difficulty', 'medium'),
+                created_at=exam_data.get('created_at', datetime.utcnow()),
+                status=exam_data.get('status', 'active'),
+                ai_provider=exam_data.get('ai_provider')
+            ))
         
-        return jsonify({
-            'success': True,
-            'exams': exam_list,
-            'count': len(exam_list)
-        })
+        return ExamListResponse(
+            success=True,
+            exams=exam_list,
+            count=len(exam_list)
+        )
         
     except Exception as e:
-        current_app.logger.error(f'List exams failed: {e}')
-        return jsonify({'error': 'Failed to list exams', 'details': str(e)}), 500
-
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Failed to list exams: {str(e)}'
+        )

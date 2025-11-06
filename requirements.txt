@@ -1,9 +1,9 @@
-# Flask 프레임워크
-Flask==3.0.3
-Werkzeug==3.0.3
-
-# CORS 처리
-Flask-CORS==4.0.1
+# FastAPI 프레임워크
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-multipart==0.0.6
 
 # 환경 변수 관리
 python-dotenv==1.0.1
@@ -12,11 +12,21 @@ python-dotenv==1.0.1
 firebase-admin==6.5.0
 
 # HTTP 요청
+httpx==0.26.0
 requests==2.32.3
 
 # 날짜/시간 처리
 python-dateutil==2.9.0
 
-# AI Integration (OpenAI)
+# AI Integration
 openai>=1.0.0
+google-generativeai==0.3.2
+
+# 테스팅
+pytest==7.4.3
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+
+# 세션 관리
+itsdangerous==2.1.2
 

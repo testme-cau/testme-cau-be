@@ -7,16 +7,17 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
-from flask import current_app, has_app_context
+
+from app.services.ai_service_interface import AIServiceInterface
 
 
-class GPTService:
+class GPTService(AIServiceInterface):
     """
     Service class for GPT interactions with model fallback.
     Primary model is driven by OPENAI_MODEL (default: gpt-5), with fallbacks.
     """
 
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not found in environment")
@@ -25,7 +26,7 @@ class GPTService:
         self.client = OpenAI(api_key=self.api_key)
 
         # Model configuration with fallback chain
-        env_model = os.getenv('OPENAI_MODEL', 'gpt-5')
+        env_model = model or os.getenv('OPENAI_MODEL', 'gpt-5')
         self.model_candidates: List[str] = [
             env_model,
             'gpt-5',
@@ -34,30 +35,24 @@ class GPTService:
             'gpt-4o-mini',
         ]
         self.active_model: Optional[str] = None
+        self.logger = logging.getLogger(__name__)
 
     @property
     def model(self) -> str:
         """Expose a model name for diagnostics (first candidate until resolved)."""
         return self.active_model or self.model_candidates[0]
+    
+    @property
+    def provider_name(self) -> str:
+        """Return provider name"""
+        return "gpt"
 
     # ---------- internal logging helpers ----------
     def _log_warn(self, message: str) -> None:
-        try:
-            if has_app_context():
-                current_app.logger.warning(message)
-                return
-        except Exception:
-            pass
-        logging.getLogger(__name__).warning(message)
+        self.logger.warning(message)
 
     def _log_error(self, message: str) -> None:
-        try:
-            if has_app_context():
-                current_app.logger.error(message)
-                return
-        except Exception:
-            pass
-        logging.getLogger(__name__).error(message)
+        self.logger.error(message)
 
     # ---------- internal chat helper ----------
     def _create_chat_completion(self, *, model: str, messages, temperature: float, max_tokens: int, response_format):

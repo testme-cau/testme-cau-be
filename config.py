@@ -1,63 +1,66 @@
 """
-Flask application configuration
+FastAPI application configuration using Pydantic Settings
 """
-import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
+from typing import List, Set
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
-class Config:
-    """Base configuration"""
+class Settings(BaseSettings):
+    """Application settings with automatic environment variable loading"""
     
-    # Flask
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
-    DEBUG = FLASK_ENV == 'development'
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
+    
+    # App Configuration
+    app_name: str = "test.me API"
+    environment: str = Field(default="development", alias="FLASK_ENV")
+    debug: bool = True
+    secret_key: str = Field(default="dev-secret-key-change-in-production", alias="SECRET_KEY")
     
     # Server
-    HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', 5000))
+    host: str = Field(default="0.0.0.0", alias="HOST")
+    port: int = Field(default=5000, alias="PORT")
     
     # File Upload
-    MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 16777216))  # 16MB
-    ALLOWED_EXTENSIONS = {'pdf'}
+    max_file_size: int = Field(default=16777216, alias="MAX_FILE_SIZE")  # 16MB
+    allowed_extensions: Set[str] = {"pdf"}
     
     # Firebase (Backend Admin SDK)
-    FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', 'serviceAccountKey.json')
-    FIREBASE_STORAGE_BUCKET = os.getenv('FIREBASE_STORAGE_BUCKET')
+    firebase_credentials_path: str = Field(default="serviceAccountKey.json", alias="FIREBASE_CREDENTIALS_PATH")
+    firebase_storage_bucket: str = Field(alias="FIREBASE_STORAGE_BUCKET")
     
     # Firebase (Web SDK for Admin OAuth)
-    FIREBASE_API_KEY = os.getenv('FIREBASE_API_KEY')
-    FIREBASE_AUTH_DOMAIN = os.getenv('FIREBASE_AUTH_DOMAIN')
-    FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID')
+    firebase_api_key: str | None = Field(default=None, alias="FIREBASE_API_KEY")
+    firebase_auth_domain: str | None = Field(default=None, alias="FIREBASE_AUTH_DOMAIN")
+    firebase_project_id: str | None = Field(default=None, alias="FIREBASE_PROJECT_ID")
     
-    # OpenAI
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    # AI Services
+    openai_api_key: str = Field(alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-5", alias="OPENAI_MODEL")
+    google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
+    google_model: str = Field(default="gemini-1.5-pro", alias="GOOGLE_MODEL")
+    default_ai_provider: str = Field(default="gpt", alias="DEFAULT_AI_PROVIDER")
     
     # Admin Authentication
-    ADMIN_ID = os.getenv('ADMIN_ID', 'admin')
-    ADMIN_PW = os.getenv('ADMIN_PW', 'admin')
+    admin_id: str = Field(default="admin", alias="ADMIN_ID")
+    admin_pw: str = Field(default="admin", alias="ADMIN_PW")
     
     # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
+    cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS origins string into list"""
+        if self.cors_origins == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
-class DevelopmentConfig(Config):
-    """Development configuration"""
-    DEBUG = True
-
-
-class ProductionConfig(Config):
-    """Production configuration"""
-    DEBUG = False
-
-
-# Configuration dictionary
-config = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
-    'default': DevelopmentConfig
-}
+# Global settings instance
+settings = Settings()
 

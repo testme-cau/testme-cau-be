@@ -4,31 +4,32 @@
 
 ## Project Overview
 
-**test.me** is a Flask-based REST API backend for an AI-powered exam generation and grading platform. The system processes university lecture PDFs using GPT-5 to generate customized exam questions and automatically grade student submissions.
+**test.me** is a FastAPI-based REST API backend for an AI-powered exam generation and grading platform. The system processes university lecture PDFs using multiple AI providers (GPT-5, Gemini) to generate customized exam questions and automatically grade student submissions.
 
 ### System Architecture
 
 ```
-User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenAI GPT-5
+User (Android App) → FastAPI API → Firebase (Auth/Storage/Firestore) → AI Services (GPT/Gemini)
 ```
 
 ### Core Workflow
 
 1. **Authentication**: User authenticates via Firebase OAuth 2.0 (Android app) or admin login (web interface)
 2. **Upload**: PDF uploaded to Firebase Cloud Storage
-3. **Processing**: PDF uploaded to OpenAI via Assistants API
-4. **Generation**: GPT-5 directly reads PDF and generates exam questions
+3. **Processing**: PDF uploaded to AI service via provider API
+4. **Generation**: AI (GPT-5 or Gemini) directly reads PDF and generates exam questions
 5. **Submission**: User submits answers via API
-6. **Grading**: GPT-5 evaluates answers by referencing the original PDF and provides feedback
+6. **Grading**: AI evaluates answers by referencing the original PDF and provides feedback
 7. **Storage**: All metadata stored in Cloud Firestore
 
 ## Technology Stack
 
 ### Backend Framework
 
-- **Flask 3.0.3**: Web framework
-- **Werkzeug 3.0.3**: WSGI utilities
-- **Flask-CORS 4.0.1**: Cross-origin resource sharing
+- **FastAPI 0.109.0**: Modern, fast web framework
+- **Uvicorn 0.27.0**: ASGI server
+- **Pydantic 2.5.3**: Data validation and settings management
+- **Python 3.11+**: Minimum Python version
 
 ### Firebase Services
 
@@ -40,73 +41,95 @@ User (Android App) → Flask API → Firebase (Auth/Storage/Firestore) → OpenA
 ### AI Integration
 
 - **openai >=1.0.0**: OpenAI Python library
-- **Model**: GPT-5 (with fallback to gpt-4.1, gpt-4o, gpt-4o-mini)
-- **Assistants API**: For PDF file analysis with file_search tool
+- **google-generativeai 0.3.2**: Google Generative AI SDK
+- **Supported AI Providers**:
+  - **GPT**: GPT-5 (with fallback to gpt-4.1, gpt-4o, gpt-4o-mini)
+  - **Gemini**: Gemini 1.5 Pro/Flash
 - **Use Cases**:
   - Direct PDF reading and exam question generation
   - PDF-referenced answer grading with detailed feedback
+  - Provider selection via query parameter or environment default
 
 ### Utilities
 
 - **python-dotenv 1.0.1**: Environment variable management
-- **requests 2.32.3**: HTTP requests
-- **python-dateutil 2.9.0**: Date/time utilities
+- **httpx 0.26.0**: Async HTTP client
+- **pytest 7.4.3**: Testing framework
+- **pytest-asyncio 0.23.3**: Async testing support
 
 ## Project Structure
 
 ```
 be/
-├── app.py                    # Application entry point
-├── config.py                 # Centralized configuration
-├── requirements.txt          # Python dependencies
-├── .env                      # Environment variables (gitignored)
-├── .env.example             # Environment template
-├── serviceAccountKey.json   # Firebase credentials (gitignored)
+├── main.py                      # FastAPI application entry point
+├── config.py                    # Pydantic Settings configuration
+├── requirements.txt             # Python dependencies
+├── .env                         # Environment variables (gitignored)
+├── .env.example                # Environment template
+├── serviceAccountKey.json      # Firebase credentials (gitignored)
 │
 ├── app/
-│   ├── __init__.py          # Flask app factory
+│   ├── __init__.py
 │   │
-│   ├── routes/              # API endpoints
-│   │   ├── __init__.py      # Blueprint exports
-│   │   ├── main.py          # Root and health endpoints
-│   │   ├── admin.py         # Admin web interface
-│   │   ├── api.py           # API blueprint and auth decorator
-│   │   ├── pdf.py           # PDF upload/download/delete
-│   │   └── exam.py          # Exam generation/grading
+│   ├── models/                 # Pydantic models
+│   │   ├── __init__.py
+│   │   ├── domain.py           # Domain models (User, PDF, Exam)
+│   │   ├── requests.py         # Request schemas
+│   │   └── responses.py        # Response schemas
 │   │
-│   ├── services/            # Business logic
-│   │   ├── gpt_service.py       # OpenAI GPT integration (Assistants API)
-│   │   └── firebase_storage.py  # Firebase Storage wrapper
+│   ├── dependencies/           # FastAPI dependencies
+│   │   ├── __init__.py
+│   │   ├── auth.py             # Authentication dependency
+│   │   └── ai_service.py       # AI service injection
 │   │
-│   ├── utils/               # Utility functions
-│   │   └── file_utils.py    # File validation helpers
+│   ├── routes/                 # API routers
+│   │   ├── __init__.py
+│   │   ├── main.py             # Root and health endpoints
+│   │   ├── pdf.py              # PDF upload/download/delete
+│   │   └── exam.py             # Exam generation/grading
 │   │
-│   ├── templates/           # HTML templates (admin page)
-│   └── static/              # Static files
+│   ├── services/               # Business logic
+│   │   ├── ai_service_interface.py  # AI service abstract interface
+│   │   ├── ai_factory.py            # AI service factory
+│   │   ├── gpt_service.py           # OpenAI GPT implementation
+│   │   ├── gemini_service.py        # Google Gemini implementation
+│   │   └── firebase_storage.py      # Firebase Storage wrapper
+│   │
+│   ├── utils/                  # Utility functions
+│   │   └── file_utils.py       # File validation helpers
+│   │
+│   ├── templates/              # HTML templates (admin page)
+│   └── static/                 # Static files
 │
-└── tests/                   # Test suite
-    ├── test_gpt_service.py      # GPT service tests
-    ├── test_gpt5_greeting.py    # GPT-5 basic test
-    └── test_gpt5_verbose.py     # GPT-5 response analysis
+└── tests/                      # pytest test suite
+    ├── conftest.py             # pytest fixtures
+    ├── test_auth.py            # Authentication tests
+    ├── test_main.py            # Main API tests
+    ├── test_pdf_routes.py      # PDF API tests
+    ├── test_exam_routes.py     # Exam API tests
+    ├── test_gpt_service.py     # GPT service tests
+    └── test_gpt5_greeting.py   # GPT-5 connection test
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable                  | Required | Default       | Description                                           |
-| ------------------------- | -------- | ------------- | ----------------------------------------------------- |
-| `FLASK_APP`               | Yes      | `app.py`      | Flask application entry point                         |
-| `FLASK_ENV`               | No       | `development` | Environment mode                                      |
-| `SECRET_KEY`              | Yes      | -             | Flask secret key (use `secrets.token_hex(32)`)        |
-| `HOST`                    | No       | `0.0.0.0`     | Server host                                           |
-| `PORT`                    | No       | `5000`        | Server port                                           |
-| `MAX_FILE_SIZE`           | No       | `16777216`    | Max upload size in bytes (16MB)                       |
-| `FIREBASE_STORAGE_BUCKET` | Yes      | -             | Firebase storage bucket (e.g., `project.appspot.com`) |
-| `OPENAI_API_KEY`          | Yes      | -             | OpenAI API key                                        |
-| `OPENAI_MODEL`            | No       | `gpt-5`       | OpenAI model name                                     |
-| `ADMIN_ID`                | No       | `admin`       | Admin page username (legacy)                          |
-| `ADMIN_PW`                | No       | `admin`       | Admin page password (legacy)                          |
+| Variable                    | Required | Default                  | Description                                           |
+| --------------------------- | -------- | ------------------------ | ----------------------------------------------------- |
+| `SECRET_KEY`                | Yes      | -                        | FastAPI secret key (use `secrets.token_hex(32)`)      |
+| `FLASK_ENV`                 | No       | `development`            | Environment mode (for compatibility)                  |
+| `HOST`                      | No       | `0.0.0.0`                | Server host                                           |
+| `PORT`                      | No       | `5000`                   | Server port                                           |
+| `MAX_FILE_SIZE`             | No       | `16777216`               | Max upload size in bytes (16MB)                       |
+| `FIREBASE_STORAGE_BUCKET`   | Yes      | -                        | Firebase storage bucket (e.g., `project.appspot.com`) |
+| `FIREBASE_CREDENTIALS_PATH` | No       | `serviceAccountKey.json` | Path to Firebase service account key                  |
+| `OPENAI_API_KEY`            | Yes      | -                        | OpenAI API key                                        |
+| `OPENAI_MODEL`              | No       | `gpt-5`                  | OpenAI model name                                     |
+| `GOOGLE_API_KEY`            | No       | -                        | Google AI API key (for Gemini)                        |
+| `GOOGLE_MODEL`              | No       | `gemini-1.5-pro`         | Gemini model name                                     |
+| `DEFAULT_AI_PROVIDER`       | No       | `gpt`                    | Default AI provider: gpt or gemini                    |
+| `CORS_ORIGINS`              | No       | `*`                      | Comma-separated CORS origins                          |
 
 ### Firebase Setup
 
@@ -122,33 +145,27 @@ be/
 
 ### Authentication
 
-#### Firebase OAuth 2.0 (Android App Users)
-
-All API endpoints (except `/` and `/health`) require Firebase ID token in the `Authorization` header:
+All API endpoints (except `/`, `/health`, `/api/health`) require Firebase ID token in the `Authorization` header:
 
 ```
 Authorization: Bearer <firebase-id-token>
 ```
 
-The `@require_firebase_auth` decorator verifies the token and adds `request.user` with Firebase user data.
+The `get_current_user` dependency verifies the token and injects user data into the route handler.
 
-#### Admin Login (Web Interface)
+### Main Endpoints
 
-For development and testing purposes, an admin web interface is available at `/admin-page`:
+#### `GET /`
 
-- **Primary Login**: Google OAuth 2.0 via Firebase Web SDK
-  - Real Firebase authentication tokens
-  - Same flow as Android app users
-  - Tokens stored in server-side session
-  - Automatically included in API calls via session
-- **Legacy Login**: Username/password with `ADMIN_ID` and `ADMIN_PW` (deprecated)
-  - Creates mock Firebase user without real tokens
-  - For backward compatibility only
-  - Use OAuth for realistic testing
-- **Purpose**: Web-based testing interface for API functionality without Android app
-- **Security**: Only for development; requires proper Firebase configuration
+Welcome message and API information
 
-**Note**: Admin OAuth login simulates the actual Android app authentication flow with real Firebase tokens.
+#### `GET /health`
+
+Health check endpoint
+
+#### `GET /api/health`
+
+API health check endpoint
 
 ### PDF Management
 
@@ -157,9 +174,9 @@ For development and testing purposes, an admin web interface is available at `/a
 Upload PDF to Firebase Storage
 
 **Request**: `multipart/form-data` with `file` field  
-**Response**: `{ file_id, original_filename, file_url, uploaded_at, size }`
+**Response**: `PDFUploadResponse` with file information
 
-#### `GET /api/pdf/<file_id>/download`
+#### `GET /api/pdf/{file_id}/download`
 
 Get PDF download URL (redirects to Firebase signed URL, 1-hour expiration)
 
@@ -167,17 +184,23 @@ Get PDF download URL (redirects to Firebase signed URL, 1-hour expiration)
 
 List all PDFs for authenticated user
 
-#### `DELETE /api/pdf/<file_id>`
+**Response**: `PDFListResponse` with list of PDFs
+
+#### `DELETE /api/pdf/{file_id}`
 
 Delete PDF from Firebase Storage and Firestore
 
 ### Exam Management
 
-#### `POST /api/exam/generate`
+#### `POST /api/exam/generate?ai_provider=gpt`
 
 Generate exam from uploaded PDF
 
-**Request Body**:
+**Query Parameters**:
+
+- `ai_provider` (optional): `gpt` or `gemini` - defaults to `DEFAULT_AI_PROVIDER`
+
+**Request Body** (`ExamGenerationRequest`):
 
 ```json
 {
@@ -187,9 +210,9 @@ Generate exam from uploaded PDF
 }
 ```
 
-**Response**: Exam with questions, total points, estimated time
+**Response** (`ExamResponse`): Exam with questions, total points, estimated time, and AI provider used
 
-#### `GET /api/exam/<exam_id>`
+#### `GET /api/exam/{exam_id}`
 
 Get exam details
 
@@ -197,31 +220,99 @@ Get exam details
 
 List all exams for authenticated user
 
-### Admin Interface
+**Response** (`ExamListResponse`): List of exams with metadata
 
-#### `GET /admin-page`
+## AI Service Architecture
 
-Web interface for testing with Google OAuth 2.0
+### Strategy Pattern Implementation
 
-**Authentication**:
+The system uses the **Strategy Pattern** to abstract AI providers, allowing seamless switching between GPT and Gemini.
 
-- Primary: Google OAuth 2.0 via Firebase Web SDK (recommended)
-- Legacy: Username/password with `ADMIN_ID` and `ADMIN_PW` (deprecated)
+### Components
 
-**Features**:
+#### 1. AIServiceInterface (Abstract Base Class)
 
-- Real Firebase Google authentication
-- PDF upload and exam generation
-- Full API testing with actual Firebase tokens
-- Backend operation debugging
-- User profile display with avatar and email
+```python
+from abc import ABC, abstractmethod
 
-**Implementation**:
+class AIServiceInterface(ABC):
+    @abstractmethod
+    def generate_exam_from_pdf(pdf_bytes, filename, num_questions, difficulty) -> Dict
 
-- Uses Firebase Web SDK (v10.7.1) from CDN
-- Tokens stored in server-side session (HTTPOnly)
-- Automatic token inclusion in API calls via `@require_firebase_auth` decorator
-- Session verification on each API request
+    @abstractmethod
+    def grade_exam_with_pdf(pdf_bytes, filename, questions, answers) -> Dict
+
+    @abstractmethod
+    def grade_answer(question, student_answer, correct_answer) -> Dict
+
+    @property
+    @abstractmethod
+    def provider_name(self) -> str
+```
+
+#### 2. Concrete Implementations
+
+- **GPTService**: Implements interface using OpenAI Assistants API
+- **GeminiService**: Implements interface using Google Generative AI SDK
+
+#### 3. AI Factory
+
+```python
+def get_ai_service(provider: Optional[str] = None) -> AIServiceInterface:
+    """Factory function to get AI service instance"""
+    provider = provider or settings.default_ai_provider
+    if provider == "gpt":
+        return GPTService()
+    elif provider == "gemini":
+        return GeminiService()
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
+```
+
+#### 4. FastAPI Dependency
+
+```python
+async def get_ai_service_dependency(
+    ai_provider: Optional[str] = Query(None)
+) -> AIServiceInterface:
+    """Inject AI service based on query parameter or default"""
+    return get_ai_service(ai_provider)
+```
+
+### Usage Example
+
+```python
+@router.post("/exam/generate")
+async def generate_exam(
+    request: ExamGenerationRequest,
+    user: Dict = Depends(get_current_user),
+    ai_service: AIServiceInterface = Depends(get_ai_service_dependency)
+):
+    # Use ai_service regardless of provider
+    result = ai_service.generate_exam_from_pdf(...)
+    provider_used = ai_service.provider_name  # "gpt" or "gemini"
+    return ExamResponse(..., ai_provider=provider_used)
+```
+
+### Selecting AI Provider
+
+**Via Query Parameter**:
+
+```bash
+POST /api/exam/generate?ai_provider=gemini
+```
+
+**Via Environment Variable**:
+
+```env
+DEFAULT_AI_PROVIDER=gemini
+```
+
+**Programmatically**:
+
+```python
+service = get_ai_service("gemini")
+```
 
 ## Key Services
 
@@ -233,7 +324,7 @@ Handles OpenAI API interactions using Assistants API for PDF processing.
 
 - `generate_exam_from_pdf(pdf_bytes, original_filename, num_questions, difficulty)`: Generate exam questions by uploading PDF to OpenAI
 - `grade_exam_with_pdf(pdf_bytes, original_filename, questions, answers)`: Grade entire exam by referencing the original PDF
-- `grade_answer(question, student_answer, correct_answer)`: Legacy method - Grade single answer without PDF reference
+- `grade_answer(question, student_answer, correct_answer)`: Grade single answer without PDF reference
 
 **Features**:
 
@@ -242,6 +333,24 @@ Handles OpenAI API interactions using Assistants API for PDF processing.
 - Model fallback: `gpt-5` → `gpt-4.1` → `gpt-4o` → `gpt-4o-mini`
 - Automatic cleanup: Deletes uploaded files and assistants after use
 - JSON response parsing with error handling
+
+### GeminiService (`app/services/gemini_service.py`)
+
+Handles Google Generative AI interactions for PDF processing.
+
+**Key Methods**:
+
+- `generate_exam_from_pdf(pdf_bytes, original_filename, num_questions, difficulty)`: Generate exam questions using Gemini
+- `grade_exam_with_pdf(pdf_bytes, original_filename, questions, answers)`: Grade entire exam using Gemini
+- `grade_answer(question, student_answer, correct_answer)`: Grade single answer
+
+**Features**:
+
+- **Gemini File API**: Uploads PDF for multimodal processing
+- **Direct PDF Reading**: Gemini reads and analyzes PDF content
+- Model: `gemini-1.5-pro` or `gemini-1.5-flash`
+- Automatic cleanup: Deletes uploaded files after use
+- JSON response parsing with markdown extraction
 
 ### FirebaseStorageService (`app/services/firebase_storage.py`)
 
@@ -255,8 +364,6 @@ Manages Firebase Cloud Storage operations.
 - `download_file(storage_path)`: Download file as bytes
 
 **Storage Path Format**: `pdfs/{user_id}/{uuid}.pdf`
-
-**Note**: PDFs are temporarily downloaded from Firebase Storage and uploaded to OpenAI for processing, then cleaned up automatically.
 
 ## Data Models (Firestore)
 
@@ -290,7 +397,8 @@ Manages Firebase Cloud Storage operations.
   "num_questions": 10,
   "difficulty": "medium",
   "created_at": "timestamp",
-  "status": "active"
+  "status": "active",
+  "ai_provider": "gpt"
 }
 ```
 
@@ -299,90 +407,190 @@ Manages Firebase Cloud Storage operations.
 ### Code Style
 
 - Follow PEP 8 style guide
-- Use type hints where applicable
-- Document functions with docstrings
+- Use type hints throughout the codebase
+- Document functions with detailed docstrings
 - Keep functions focused and modular
+- Use Pydantic models for data validation
+
+### FastAPI Patterns
+
+- **Dependencies**: Use `Depends()` for injection
+- **Route Decorators**: `@router.get()`, `@router.post()`, etc.
+- **Response Models**: Always specify `response_model`
+- **Status Codes**: Use FastAPI status constants
+- **Exceptions**: Raise `HTTPException` for errors
 
 ### Error Handling
 
 - Use try-except blocks for external service calls
-- Log errors with `current_app.logger.error()`
-- Return meaningful error messages to clients
-- Use appropriate HTTP status codes
+- Raise `HTTPException` with appropriate status codes
+- Log errors using Python logging
+- Return structured error responses
+- Never expose internal error details to clients
 
 ### Security
 
 - Never commit `.env` or `serviceAccountKey.json`
-- Validate all user inputs
+- Validate all user inputs with Pydantic models
 - Use Firebase Admin SDK for token verification
 - Generate signed URLs with short expiration times
 - Implement rate limiting for production
+- Use HTTPS only in production
 
 ### Testing
 
-- Run GPT service tests: `pytest tests/test_gpt_service.py -v`
-- Test GPT-5 connection: `python tests/test_gpt5_greeting.py`
-- Use admin page for end-to-end testing
+- Write tests before implementation (TDD)
+- Use pytest with async support
+- Mock external services (Firebase, OpenAI, Gemini)
+- Test authentication and authorization
+- Test error scenarios
+- Run tests: `pytest tests/ -v`
+- Check coverage: `pytest --cov=app tests/`
 
 ## Common Tasks
 
 ### Adding a New API Endpoint
 
-1. Create route function in appropriate file (`app/routes/`)
-2. Add `@require_firebase_auth` decorator if authentication needed
-3. Validate request data
-4. Call service layer functions
-5. Return JSON response with appropriate status code
+1. **Define Pydantic Models** (if needed):
 
-### Modifying GPT Behavior
+   - Request model in `app/models/requests.py`
+   - Response model in `app/models/responses.py`
 
-Edit prompts in `app/services/gpt_service.py`:
+2. **Create Route Handler**:
 
-- `generate_exam_from_text()`: Modify `system_prompt` or `user_prompt`
-- `grade_answer()`: Adjust grading criteria in system prompt
+   ```python
+   from fastapi import APIRouter, Depends
+   from app.dependencies.auth import get_current_user
 
-### Changing Storage Location
+   router = APIRouter()
 
-Firebase Storage paths are in `FirebaseStorageService.upload_file()`:
+   @router.post("/endpoint", response_model=MyResponse)
+   async def my_endpoint(
+       request: MyRequest,
+       user: Dict = Depends(get_current_user)
+   ):
+       # Implementation
+       return MyResponse(...)
+   ```
 
-- Current: `pdfs/{user_id}/{uuid}.pdf`
-- Modify to organize by date, course, etc.
+3. **Register Router** in `main.py`:
 
-### Adding New Dependencies
+   ```python
+   app.include_router(my_router, prefix="/api/my")
+   ```
 
-1. Install: `pip install package-name`
-2. Freeze: `pip freeze | grep package-name >> requirements.txt`
-3. Document in this file if it's a core dependency
+4. **Write Tests** in `tests/test_my_routes.py`
+
+### Adding a New AI Provider
+
+1. **Create Service Class**:
+
+   ```python
+   from app.services.ai_service_interface import AIServiceInterface
+
+   class MyAIService(AIServiceInterface):
+       @property
+       def provider_name(self) -> str:
+           return "myai"
+
+       def generate_exam_from_pdf(self, ...):
+           # Implementation
+           pass
+   ```
+
+2. **Update Factory** in `app/services/ai_factory.py`:
+
+   ```python
+   def get_ai_service(provider: Optional[str] = None):
+       # ...
+       elif provider == "myai":
+           return MyAIService()
+   ```
+
+3. **Add Configuration** in `config.py`:
+
+   ```python
+   myai_api_key: str | None = Field(default=None)
+   ```
+
+4. **Write Tests**
+
+### Modifying AI Behavior
+
+Edit prompts in AI service classes:
+
+- `GPTService.generate_exam_from_pdf()`: Modify instructions
+- `GeminiService.generate_exam_from_pdf()`: Modify prompt
+
+### Running the Application
+
+**Development**:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 5000
+```
+
+**Production**:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 5000 --workers 4
+```
+
+**Using main.py**:
+
+```bash
+python main.py
+```
+
+## API Documentation
+
+FastAPI automatically generates interactive API documentation:
+
+- **Swagger UI**: http://localhost:5000/docs
+- **ReDoc**: http://localhost:5000/redoc
+- **OpenAPI JSON**: http://localhost:5000/openapi.json
 
 ## Deployment Considerations
 
 ### Environment
 
-- Set `FLASK_ENV=production`
-- Use a strong `SECRET_KEY`
+- Set production environment variables
+- Use strong `SECRET_KEY`
 - Enable HTTPS only
-- Set up proper CORS origins in `config.py`
+- Set proper CORS origins
+- Use environment-specific `.env` files
+
+### FastAPI Deployment
+
+- Use ASGI server (Uvicorn with multiple workers)
+- Deploy behind reverse proxy (Nginx)
+- Enable Gzip compression
+- Set up logging and monitoring
+- Use containerization (Docker)
 
 ### Firebase
 
-- Use Firebase project with billing enabled for production
+- Use Firebase project with billing enabled
 - Configure Storage security rules
 - Set up Firestore indexes for queries
-- Monitor usage in Firebase Console
+- Monitor usage and costs
+- Set up proper IAM roles
 
-### OpenAI
+### AI Services
 
-- Monitor API usage and costs
-- Implement rate limiting
-- Consider caching common exam generations
-- Set up usage alerts
+- Monitor API usage and costs for both providers
+- Implement caching for common requests
+- Set usage limits and alerts
+- Consider fallback strategies
+- Track provider performance and accuracy
 
 ### Scaling
 
-- Use WSGI server (Gunicorn, uWSGI)
-- Deploy behind reverse proxy (Nginx)
-- Consider Firebase Functions for serverless scaling
-- Implement job queue for long-running tasks (exam generation)
+- Use multiple Uvicorn workers
+- Implement job queue for long-running tasks
+- Use Redis for caching
+- Consider serverless deployment (Cloud Run)
+- Horizontal scaling with load balancer
 
 ## Troubleshooting
 
@@ -390,28 +598,62 @@ Firebase Storage paths are in `FirebaseStorageService.upload_file()`:
 
 - Verify `serviceAccountKey.json` exists and is valid
 - Check `FIREBASE_STORAGE_BUCKET` in `.env`
-- Ensure Firebase project has Storage enabled
+- Ensure Firebase project has required services enabled
 
-### GPT-5 API Errors
+### AI Service Errors
+
+**GPT**:
 
 - Verify `OPENAI_API_KEY` is valid
 - Check API usage limits
 - Review fallback model behavior in logs
-- Test with `tests/test_gpt5_greeting.py`
 
-### PDF Upload Fails
+**Gemini**:
+
+- Verify `GOOGLE_API_KEY` is valid
+- Check API quota and billing
+- Ensure model name is correct
+
+### PDF Upload/Processing Fails
 
 - Check file size against `MAX_FILE_SIZE`
 - Verify Firebase Storage permissions
 - Ensure user is authenticated
 - Check Firebase Storage rules
+- Verify AI service can access PDFs
 
 ### Authentication Issues
 
 - Verify Firebase ID token is being sent
-- Check token hasn't expired (1 hour default)
+- Check token hasn't expired
 - Ensure Firebase project matches credentials
 - Review Admin SDK initialization logs
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_pdf_routes.py -v
+
+# Run with coverage
+pytest --cov=app tests/
+
+# Run async tests
+pytest tests/test_auth.py -v -s
+```
+
+### Test Structure
+
+- Use `pytest` fixtures for setup
+- Mock external services
+- Test both success and failure scenarios
+- Use `TestClient` for API testing
+- Test authentication and authorization
 
 ## License
 
@@ -422,4 +664,8 @@ MIT License - See LICENSE file for details
 **For Human Developers**: See README.md for setup instructions  
 **For AI Agents**: This document contains the complete technical specification
 
-Last Updated: 2025-10-09
+**Framework**: FastAPI 0.109.0  
+**AI Providers**: GPT-5, Gemini 1.5 Pro  
+**Architecture**: Strategy Pattern for AI abstraction
+
+Last Updated: 2025-11-06

@@ -1,70 +1,69 @@
 """
-PDF routes (file upload and management)
+PDF routes (file upload and management) - FastAPI version
 """
-import os
 from datetime import datetime, timedelta
-from flask import request, jsonify, current_app, redirect
+from typing import Dict, Any
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from firebase_admin import firestore
-from werkzeug.utils import secure_filename
-from app.routes import api_bp
-from app.routes.api import require_firebase_auth
+
+from app.dependencies.auth import get_current_user
 from app.services.firebase_storage import FirebaseStorageService
 from app.utils.file_utils import allowed_file
+from app.models.responses import PDFUploadResponse, PDFListResponse, PDFInfo, SuccessResponse
+from config import settings
+
+router = APIRouter(tags=["pdf"])
 
 
-@api_bp.route('/pdf/upload', methods=['POST'])
-@require_firebase_auth
-def upload_pdf():
+@router.post("/upload", response_model=PDFUploadResponse, status_code=status.HTTP_201_CREATED)
+async def upload_pdf(
+    file: UploadFile = File(..., description="PDF file to upload"),
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Upload PDF file to Firebase Storage
     
-    Request:
-        - multipart/form-data
-        - file: PDF file
+    - **file**: PDF file (multipart/form-data)
+    - Requires authentication
     
-    Response:
-        {
-            "success": true,
-            "file_id": "uuid",
-            "original_filename": "lecture.pdf",
-            "file_url": "/api/pdf/{file_id}/download",
-            "uploaded_at": "2025-10-06T...",
-            "size": 1024000
-        }
+    Returns:
+        PDFUploadResponse with file information
     """
     try:
-        # Check if file is in request
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-        
-        file = request.files['file']
-        
-        # Check if file is selected
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
         # Validate file type
-        if not allowed_file(file.filename, current_app.config['ALLOWED_EXTENSIONS']):
-            return jsonify({'error': 'Only PDF files are allowed'}), 400
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No file selected"
+            )
+        
+        if not allowed_file(file.filename, settings.allowed_extensions):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only PDF files are allowed"
+            )
         
         # Check file size
-        file.seek(0, os.SEEK_END)
-        file_length = file.tell()
-        file.seek(0)
+        file_content = await file.read()
+        file_length = len(file_content)
         
-        if file_length > current_app.config['MAX_FILE_SIZE']:
-            return jsonify({
-                'error': 'File too large',
-                'max_size': current_app.config['MAX_FILE_SIZE']
-            }), 400
+        if file_length > settings.max_file_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File too large. Maximum size: {settings.max_file_size} bytes"
+            )
+        
+        # Reset file pointer
+        await file.seek(0)
         
         # Get user info
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Upload to Firebase Storage
         storage_service = FirebaseStorageService()
         upload_result = storage_service.upload_file(
-            file,
+            file.file,
             user_uid,
             file.filename
         )
@@ -93,35 +92,41 @@ def upload_pdf():
         # Construct file URL
         file_url = f"/api/pdf/{file_id}/download"
         
-        return jsonify({
-            'success': True,
-            'file_id': file_id,
-            'original_filename': upload_result['original_filename'],
-            'file_url': file_url,
-            'uploaded_at': datetime.utcnow().isoformat(),
-            'size': file_size
-        }), 201
+        return PDFUploadResponse(
+            success=True,
+            file_id=file_id,
+            original_filename=upload_result['original_filename'],
+            file_url=file_url,
+            uploaded_at=datetime.utcnow(),
+            size=file_size
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        current_app.logger.error(f'Upload failed: {e}')
-        return jsonify({'error': 'Upload failed', 'details': str(e)}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload failed: {str(e)}"
+        )
 
 
-@api_bp.route('/pdf/<file_id>/download', methods=['GET'])
-@require_firebase_auth
-def download_pdf(file_id):
+@router.get("/{file_id}/download")
+async def download_pdf(
+    file_id: str,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Download PDF file from Firebase Storage
     Returns a signed URL that redirects to the file
     
-    Args:
-        file_id: UUID of the file
+    - **file_id**: UUID of the file
+    - Requires authentication
     
-    Response:
-        Redirect to signed URL or error
+    Returns:
+        Redirect to signed URL (1-hour expiration)
     """
     try:
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Get file metadata from Firestore
         db = firestore.client()
@@ -129,13 +134,19 @@ def download_pdf(file_id):
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:
-            return jsonify({'error': 'File not found'}), 404
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
         
         pdf_data = pdf_doc.to_dict()
         
         # Verify ownership
         if pdf_data.get('user_id') != user_uid:
-            return jsonify({'error': 'Unauthorized'}), 403
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized"
+            )
         
         # Generate signed URL from Firebase Storage
         storage_service = FirebaseStorageService()
@@ -145,38 +156,34 @@ def download_pdf(file_id):
         )
         
         # Redirect to signed URL
-        return redirect(signed_url)
+        return RedirectResponse(url=signed_url)
         
+    except HTTPException:
+        raise
     except FileNotFoundError:
-        return jsonify({'error': 'File not found in storage'}), 404
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found in storage"
+        )
     except Exception as e:
-        current_app.logger.error(f'Download failed: {e}')
-        return jsonify({'error': 'Download failed', 'details': str(e)}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Download failed: {str(e)}"
+        )
 
 
-@api_bp.route('/pdf/list', methods=['GET'])
-@require_firebase_auth
-def list_pdfs():
+@router.get("/list", response_model=PDFListResponse)
+async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
     """
     List all PDFs for current user
     
-    Response:
-        {
-            "success": true,
-            "pdfs": [
-                {
-                    "file_id": "uuid",
-                    "original_filename": "lecture.pdf",
-                    "file_url": "/api/pdf/{file_id}/download",
-                    "size": 1024000,
-                    "uploaded_at": "2025-10-06T..."
-                },
-                ...
-            ]
-        }
+    - Requires authentication
+    
+    Returns:
+        PDFListResponse with list of PDFs
     """
     try:
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Get all PDFs for user
         db = firestore.client()
@@ -186,43 +193,44 @@ def list_pdfs():
         pdf_list = []
         for pdf in pdfs:
             pdf_data = pdf.to_dict()
-            pdf_list.append({
-                'file_id': pdf_data['file_id'],
-                'original_filename': pdf_data['original_filename'],
-                'file_url': f"/api/pdf/{pdf_data['file_id']}/download",
-                'size': pdf_data['size'],
-                'uploaded_at': pdf_data.get('uploaded_at'),
-                'status': pdf_data.get('status', 'uploaded')
-            })
+            pdf_list.append(PDFInfo(
+                file_id=pdf_data['file_id'],
+                original_filename=pdf_data['original_filename'],
+                file_url=f"/api/pdf/{pdf_data['file_id']}/download",
+                size=pdf_data['size'],
+                uploaded_at=pdf_data.get('uploaded_at', datetime.utcnow()),
+                status=pdf_data.get('status', 'uploaded')
+            ))
         
-        return jsonify({
-            'success': True,
-            'pdfs': pdf_list,
-            'count': len(pdf_list)
-        })
+        return PDFListResponse(
+            success=True,
+            pdfs=pdf_list,
+            count=len(pdf_list)
+        )
         
     except Exception as e:
-        current_app.logger.error(f'List PDFs failed: {e}')
-        return jsonify({'error': 'Failed to list PDFs', 'details': str(e)}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list PDFs: {str(e)}"
+        )
 
 
-@api_bp.route('/pdf/<file_id>', methods=['DELETE'])
-@require_firebase_auth
-def delete_pdf(file_id):
+@router.delete("/{file_id}", response_model=SuccessResponse)
+async def delete_pdf(
+    file_id: str,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Delete PDF file from Firebase Storage and Firestore
     
-    Args:
-        file_id: UUID of the file
+    - **file_id**: UUID of the file
+    - Requires authentication
     
-    Response:
-        {
-            "success": true,
-            "message": "File deleted successfully"
-        }
+    Returns:
+        SuccessResponse
     """
     try:
-        user_uid = request.user['uid']
+        user_uid = user['uid']
         
         # Get file metadata from Firestore
         db = firestore.client()
@@ -230,13 +238,19 @@ def delete_pdf(file_id):
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:
-            return jsonify({'error': 'File not found'}), 404
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
         
         pdf_data = pdf_doc.to_dict()
         
         # Verify ownership
         if pdf_data.get('user_id') != user_uid:
-            return jsonify({'error': 'Unauthorized'}), 403
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized"
+            )
         
         # Delete file from Firebase Storage
         storage_service = FirebaseStorageService()
@@ -245,12 +259,15 @@ def delete_pdf(file_id):
         # Delete metadata from Firestore
         pdf_ref.delete()
         
-        return jsonify({
-            'success': True,
-            'message': 'File deleted successfully'
-        })
+        return SuccessResponse(
+            success=True,
+            message="File deleted successfully"
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        current_app.logger.error(f'Delete failed: {e}')
-        return jsonify({'error': 'Delete failed', 'details': str(e)}), 500
-
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Delete failed: {str(e)}"
+        )

@@ -1,72 +1,51 @@
 """
-Main routes (root endpoints)
+Main API routes (root and health endpoints)
 """
-import os
-from flask import jsonify, current_app, send_from_directory, session, render_template
-from werkzeug.utils import safe_join
-from app.routes import main_bp
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+router = APIRouter()
 
 
-@main_bp.route('/')
-def index():
-    """Root endpoint - API information"""
-    return jsonify({
-        'name': 'test.me Backend API',
-        'version': '1.0.0',
-        'description': 'AI-powered exam generation and grading system',
-        'status': 'running',
-        'endpoints': {
-            'health': '/health',
-            'admin': '/admin-page',
-            'api': '/api',
-            'uploads': '/uploads/<path:filename>'
-        }
-    })
+class HealthResponse(BaseModel):
+    """Health check response"""
+    status: str
+    message: str
+    version: str = "2.0.0"
 
 
-@main_bp.route('/health')
-def health_check():
+class WelcomeResponse(BaseModel):
+    """Welcome message response"""
+    message: str
+    version: str = "2.0.0"
+    api_docs: str
+
+
+@router.get("/", response_model=WelcomeResponse, tags=["main"])
+async def root():
+    """Root endpoint - welcome message"""
+    return WelcomeResponse(
+        message="Welcome to test.me API - AI-powered exam generation platform",
+        version="2.0.0",
+        api_docs="/docs"
+    )
+
+
+@router.get("/health", response_model=HealthResponse, tags=["main"])
+async def health():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'test.me API'
-    }), 200
+    return HealthResponse(
+        status="healthy",
+        message="Service is running",
+        version="2.0.0"
+    )
 
 
-@main_bp.route('/admin-page')
-def admin_page():
-    """Admin page - multi-step authentication flow"""
-    # Step 1: Check admin gate auth
-    if not session.get('admin_authenticated'):
-        return render_template('admin/login.html')
-    
-    # Step 2: Check Firebase OAuth
-    if not session.get('firebase_authenticated'):
-        return render_template('admin/oauth.html')
-    
-    # Both steps passed: show dashboard
-    return render_template('admin/dashboard.html')
-
-
-@main_bp.route('/uploads/<path:filename>')
-def serve_uploaded_file(filename):
-    """
-    Serve uploaded files (PDFs)
-    URL format: /uploads/{user_id}/{pdf_name}
-    """
-    try:
-        upload_folder = current_app.config['UPLOAD_FOLDER']
-        file_path = safe_join(upload_folder, filename)
-        
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'File not found'}), 404
-        
-        return send_from_directory(
-            upload_folder,
-            filename,
-            mimetype='application/pdf'
-        )
-    except Exception as e:
-        current_app.logger.error(f'Error serving file: {e}')
-        return jsonify({'error': 'Internal server error'}), 500
-
+@router.get("/api/health", response_model=HealthResponse, tags=["api"])
+async def api_health():
+    """API health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        message="API is running",
+        version="2.0.0"
+    )
