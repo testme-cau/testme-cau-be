@@ -1,0 +1,86 @@
+# Python
+<<<<<<< HEAD
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+=======
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/serviceAccountKey.json
+backend/.env
+
+# Node
+web-frontend/node_modules/
+web-frontend/.next/
+web-frontend/out/
+web-frontend/dist/
+web-frontend/.env.local
+
+# Environment
+.env
+.env.local
+*.env.local
+>>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+<<<<<<< HEAD
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Firebase
+serviceAccountKey.json
+=======
+>>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7
+
+# OS
+.DS_Store
+Thumbs.db
+
+<<<<<<< HEAD
+# Android Lab Projects (not part of test.me)
+Lab*/
+MySecondApp/
+ThridApp/
+projects/
+pdf/
+transcript/
+team.txt
+=======
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+>>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7
