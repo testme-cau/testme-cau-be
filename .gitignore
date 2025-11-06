@@ -1,0 +1,23 @@
+# Android Lab Projects (not part of test.me)
+Lab*/
+MySecondApp/
+ThridApp/
+projects/
+pdf/
+transcript/
+team.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep testme project only
+*
+!testme/
+!.gitignore
