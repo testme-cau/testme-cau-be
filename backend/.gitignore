@@ -1,0 +1,89 @@
+# Python
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# 가상 환경
+venv/
+env/
+ENV/
+virtualenv/
+.venv/
+
+# Flask
+instance/
+.webassets-cache
+
+# 환경 변수
+.env
+.env.local
+.env.*.local
+.flaskenv
+
+# Keep .env.example for reference
+!.env.example
+
+# Firebase
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+firebase-config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PyCharm
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# 로그
+*.log
+logs/
+
+# 테스트
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# 캐시
+__pycache__/
+*.pyc
+
+# 테스트 결과물
+tests/.artifacts/
