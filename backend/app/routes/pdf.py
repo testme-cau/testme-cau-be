@@ -1,9 +1,9 @@
 """
-PDF routes (file upload and management) - FastAPI version
+PDF routes (file upload and management) - Subject-based structure
 """
 from datetime import datetime, timedelta
 from typing import Dict, Any
-from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, status
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, status, Path
 from fastapi.responses import RedirectResponse
 from firebase_admin import firestore
 
@@ -16,14 +16,16 @@ from config import settings
 router = APIRouter(tags=["pdf"])
 
 
-@router.post("/upload", response_model=PDFUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/subjects/{subject_id}/pdfs/upload", response_model=PDFUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_pdf(
+    subject_id: str = Path(..., description="Subject ID"),
     file: UploadFile = File(..., description="PDF file to upload"),
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Upload PDF file to Firebase Storage
+    Upload PDF file to Firebase Storage under a specific subject
     
+    - **subject_id**: Subject ID
     - **file**: PDF file (multipart/form-data)
     - Requires authentication
     
@@ -31,6 +33,26 @@ async def upload_pdf(
         PDFUploadResponse with file information
     """
     try:
+        user_uid = user['uid']
+        
+        # Verify subject exists and belongs to user
+        db = firestore.client()
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        subject_doc = subject_ref.get()
+        
+        if not subject_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subject not found"
+            )
+        
+        subject_data = subject_doc.to_dict()
+        if subject_data.get('user_id') != user_uid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized"
+            )
+        
         # Validate file type
         if not file.filename:
             raise HTTPException(
@@ -57,9 +79,6 @@ async def upload_pdf(
         # Reset file pointer
         await file.seek(0)
         
-        # Get user info
-        user_uid = user['uid']
-        
         # Upload to Firebase Storage
         storage_service = FirebaseStorageService()
         upload_result = storage_service.upload_file(
@@ -71,13 +90,13 @@ async def upload_pdf(
         # Get file size from Firebase Storage
         file_size = storage_service.get_file_size(upload_result['storage_path'])
         
-        # Save metadata to Firestore
-        db = firestore.client()
+        # Save metadata to Firestore under subject
         file_id = upload_result['file_id']
-        pdf_ref = db.collection('users').document(user_uid).collection('pdfs').document(file_id)
+        pdf_ref = subject_ref.collection('pdfs').document(file_id)
         
         pdf_data = {
             'file_id': file_id,
+            'subject_id': subject_id,
             'original_filename': upload_result['original_filename'],
             'unique_filename': upload_result['unique_filename'],
             'storage_path': upload_result['storage_path'],
@@ -90,7 +109,7 @@ async def upload_pdf(
         pdf_ref.set(pdf_data)
         
         # Construct file URL
-        file_url = f"/api/pdf/{file_id}/download"
+        file_url = f"/api/subjects/{subject_id}/pdfs/{file_id}/download"
         
         return PDFUploadResponse(
             success=True,
@@ -110,15 +129,17 @@ async def upload_pdf(
         )
 
 
-@router.get("/{file_id}/download")
+@router.get("/subjects/{subject_id}/pdfs/{file_id}/download")
 async def download_pdf(
-    file_id: str,
+    subject_id: str = Path(..., description="Subject ID"),
+    file_id: str = Path(..., description="File ID"),
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Download PDF file from Firebase Storage
     Returns a signed URL that redirects to the file
     
+    - **subject_id**: Subject ID
     - **file_id**: UUID of the file
     - Requires authentication
     
@@ -130,7 +151,8 @@ async def download_pdf(
         
         # Get file metadata from Firestore
         db = firestore.client()
-        pdf_ref = db.collection('users').document(user_uid).collection('pdfs').document(file_id)
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        pdf_ref = subject_ref.collection('pdfs').document(file_id)
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:
@@ -172,11 +194,15 @@ async def download_pdf(
         )
 
 
-@router.get("/list", response_model=PDFListResponse)
-async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/subjects/{subject_id}/pdfs", response_model=PDFListResponse)
+async def list_pdfs(
+    subject_id: str = Path(..., description="Subject ID"),
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
-    List all PDFs for current user
+    List all PDFs for a specific subject
     
+    - **subject_id**: Subject ID
     - Requires authentication
     
     Returns:
@@ -185,9 +211,19 @@ async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
     try:
         user_uid = user['uid']
         
-        # Get all PDFs for user
+        # Verify subject exists
         db = firestore.client()
-        pdfs_ref = db.collection('users').document(user_uid).collection('pdfs')
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        subject_doc = subject_ref.get()
+        
+        if not subject_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subject not found"
+            )
+        
+        # Get all PDFs for subject
+        pdfs_ref = subject_ref.collection('pdfs')
         pdfs = pdfs_ref.order_by('uploaded_at', direction=firestore.Query.DESCENDING).stream()
         
         pdf_list = []
@@ -196,7 +232,7 @@ async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
             pdf_list.append(PDFInfo(
                 file_id=pdf_data['file_id'],
                 original_filename=pdf_data['original_filename'],
-                file_url=f"/api/pdf/{pdf_data['file_id']}/download",
+                file_url=f"/api/subjects/{subject_id}/pdfs/{pdf_data['file_id']}/download",
                 size=pdf_data['size'],
                 uploaded_at=pdf_data.get('uploaded_at', datetime.utcnow()),
                 status=pdf_data.get('status', 'uploaded')
@@ -208,6 +244,8 @@ async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
             count=len(pdf_list)
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -215,14 +253,16 @@ async def list_pdfs(user: Dict[str, Any] = Depends(get_current_user)):
         )
 
 
-@router.delete("/{file_id}", response_model=SuccessResponse)
+@router.delete("/subjects/{subject_id}/pdfs/{file_id}", response_model=SuccessResponse)
 async def delete_pdf(
-    file_id: str,
+    subject_id: str = Path(..., description="Subject ID"),
+    file_id: str = Path(..., description="File ID"),
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Delete PDF file from Firebase Storage and Firestore
     
+    - **subject_id**: Subject ID
     - **file_id**: UUID of the file
     - Requires authentication
     
@@ -234,7 +274,8 @@ async def delete_pdf(
         
         # Get file metadata from Firestore
         db = firestore.client()
-        pdf_ref = db.collection('users').document(user_uid).collection('pdfs').document(file_id)
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        pdf_ref = subject_ref.collection('pdfs').document(file_id)
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:

@@ -1,14 +1,16 @@
-# Python
-<<<<<<< HEAD
-__pycache__/
+# ============================================
+# Python / Backend
+# ============================================
+
+# Python cache
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
-build/
-develop-eggs/
+*.egg
+*.egg-info
 dist/
-downloads/
+build/
 eggs/
 .eggs/
 lib/
@@ -17,58 +19,132 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
 
-# Virtual Environment
-venv/
-ENV/
-env/
-=======
+# Virtual environments
 backend/venv/
-backend/__pycache__/
-backend/*.pyc
-backend/.pytest_cache/
-backend/serviceAccountKey.json
-backend/.env
+backend/env/
+backend/ENV/
+backend/virtualenv/
+backend/.venv/
+venv/
+env/
+ENV/
+virtualenv/
+.venv/
 
-# Node
+# Flask/FastAPI
+instance/
+.webassets-cache
+
+# Testing
+backend/.pytest_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+/coverage
+tests/.artifacts/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# ============================================
+# Node.js / Frontend
+# ============================================
+
+# Dependencies
 web-frontend/node_modules/
+node_modules/
+/.pnp
+.pnp.js
+
+# Next.js
 web-frontend/.next/
 web-frontend/out/
-web-frontend/dist/
-web-frontend/.env.local
+.next/
+/out/
 
-# Environment
+# Production build
+web-frontend/dist/
+/build
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vercel
+.vercel
+
+# ============================================
+# Environment Variables & Secrets
+# ============================================
+
+# Environment files
 .env
 .env.local
-*.env.local
->>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7
+.env*.local
+.flaskenv
+backend/.env
+backend/.env.local
+web-frontend/.env.local
 
-# IDE
+# Keep example files
+!.env.example
+!backend/.env.example
+!web-frontend/.env.example
+
+# Firebase credentials
+backend/serviceAccountKey.json
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+firebase-config.json
+*.pem
+
+# ============================================
+# IDE & Editors
+# ============================================
+
 .vscode/
 .idea/
 *.swp
 *.swo
-<<<<<<< HEAD
 *~
 
-# Environment variables
-.env
-.env.local
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Firebase
-serviceAccountKey.json
-=======
->>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7
+# ============================================
+# OS Files
+# ============================================
 
-# OS
 .DS_Store
 Thumbs.db
 
-<<<<<<< HEAD
-# Android Lab Projects (not part of test.me)
+# ============================================
+# Logs
+# ============================================
+
+*.log
+logs/
+
+# ============================================
+# Project Specific (Android Lab)
+# ============================================
+
 Lab*/
 MySecondApp/
 ThridApp/
@@ -76,11 +152,3 @@ projects/
 pdf/
 transcript/
 team.txt
-=======
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
->>>>>>> 55439fb997eaa74a0b498317e3576f304bdcc1d7

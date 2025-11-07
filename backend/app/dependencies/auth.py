@@ -3,10 +3,57 @@ Authentication dependencies for FastAPI
 """
 from typing import Dict, Any
 from fastapi import Request, HTTPException, status
-from firebase_admin import auth
+from firebase_admin import auth, firestore
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_default_subject(user_uid: str) -> str:
+    """
+    Ensure user has a default subject. If not, create one.
+    
+    Args:
+        user_uid: User's Firebase UID
+    
+    Returns:
+        str: Default subject ID
+    """
+    try:
+        db = firestore.client()
+        subjects_ref = db.collection('users').document(user_uid).collection('subjects')
+        
+        # Check if user has any subjects
+        subjects = list(subjects_ref.limit(1).stream())
+        
+        if not subjects:
+            # Create default subject
+            default_subject_ref = subjects_ref.document()
+            subject_id = default_subject_ref.id
+            
+            default_subject_data = {
+                'subject_id': subject_id,
+                'user_id': user_uid,
+                'name': '기본',
+                'description': '기본 과목',
+                'semester': None,
+                'year': None,
+                'color': '#6B7280',  # Gray color
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'updated_at': None
+            }
+            
+            default_subject_ref.set(default_subject_data)
+            logger.info(f'Created default subject for user {user_uid}')
+            return subject_id
+        
+        # Return first subject ID if exists
+        return subjects[0].id
+        
+    except Exception as e:
+        logger.error(f'Failed to ensure default subject: {e}')
+        # Don't raise exception, just log it
+        return None
 
 
 async def get_current_user(request: Request) -> Dict[str, Any]:
@@ -37,8 +84,13 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
                 # Verify the session token is still valid
                 try:
                     decoded_token = auth.verify_id_token(id_token)
+                    user_uid = decoded_token['uid']
+                    
+                    # Ensure user has a default subject
+                    ensure_default_subject(user_uid)
+                    
                     return {
-                        'uid': decoded_token['uid'],
+                        'uid': user_uid,
                         'email': decoded_token.get('email'),
                         'firebase_user': decoded_token
                     }
@@ -71,9 +123,14 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
         # Verify token with Firebase
         decoded_token = auth.verify_id_token(id_token)
         
+        user_uid = decoded_token['uid']
+        
+        # Ensure user has a default subject
+        ensure_default_subject(user_uid)
+        
         # Return user info
         return {
-            'uid': decoded_token['uid'],
+            'uid': user_uid,
             'email': decoded_token.get('email'),
             'firebase_user': decoded_token
         }

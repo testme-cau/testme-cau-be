@@ -1,9 +1,9 @@
 """
-Exam routes (exam generation and management) - FastAPI version
+Exam routes (exam generation and management) - Subject-based structure
 """
 from datetime import datetime
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from firebase_admin import firestore
 
 from app.dependencies.auth import get_current_user
@@ -17,15 +17,17 @@ from app.models.domain import Exam
 router = APIRouter(tags=["exam"])
 
 
-@router.post("/generate", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/subjects/{subject_id}/exams/generate", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
 async def generate_exam(
-    request: ExamGenerationRequest,
+    subject_id: str = Path(..., description="Subject ID"),
+    request: ExamGenerationRequest = ...,
     user: Dict[str, Any] = Depends(get_current_user),
     ai_service: AIServiceInterface = Depends(get_ai_service_dependency)
 ):
     """
-    Generate exam from PDF
+    Generate exam from PDF under a specific subject
     
+    - **subject_id**: Subject ID
     - **pdf_id**: UUID of the uploaded PDF
     - **num_questions**: Number of questions to generate (1-50)
     - **difficulty**: Difficulty level (easy, medium, hard)
@@ -42,9 +44,19 @@ async def generate_exam(
         num_questions = request.num_questions
         difficulty = request.difficulty
         
-        # Get PDF metadata from Firestore
+        # Verify subject exists
         db = firestore.client()
-        pdf_ref = db.collection('users').document(user_uid).collection('pdfs').document(pdf_id)
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        subject_doc = subject_ref.get()
+        
+        if not subject_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Subject not found'
+            )
+        
+        # Get PDF metadata from Firestore
+        pdf_ref = subject_ref.collection('pdfs').document(pdf_id)
         pdf_doc = pdf_ref.get()
         
         if not pdf_doc.exists:
@@ -82,13 +94,14 @@ async def generate_exam(
         
         exam_data = generation_result['exam']
         
-        # Save exam to Firestore
-        exams_ref = db.collection('users').document(user_uid).collection('exams')
+        # Save exam to Firestore under subject
+        exams_ref = subject_ref.collection('exams')
         exam_ref = exams_ref.document()
         exam_id = exam_ref.id
         
         exam_record = {
             'exam_id': exam_id,
+            'subject_id': subject_id,
             'pdf_id': pdf_id,
             'user_id': user_uid,
             'questions': exam_data['questions'],
@@ -122,14 +135,16 @@ async def generate_exam(
         )
 
 
-@router.get("/{exam_id}", response_model=Dict[str, Any])
+@router.get("/subjects/{subject_id}/exams/{exam_id}", response_model=Dict[str, Any])
 async def get_exam(
-    exam_id: str,
+    subject_id: str = Path(..., description="Subject ID"),
+    exam_id: str = Path(..., description="Exam ID"),
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
     Get exam details
     
+    - **subject_id**: Subject ID
     - **exam_id**: Exam ID
     
     Requires authentication
@@ -142,7 +157,8 @@ async def get_exam(
         
         # Get exam from Firestore
         db = firestore.client()
-        exam_ref = db.collection('users').document(user_uid).collection('exams').document(exam_id)
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        exam_ref = subject_ref.collection('exams').document(exam_id)
         exam_doc = exam_ref.get()
         
         if not exam_doc.exists:
@@ -174,10 +190,15 @@ async def get_exam(
         )
 
 
-@router.get("/list", response_model=ExamListResponse)
-async def list_exams(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/subjects/{subject_id}/exams", response_model=ExamListResponse)
+async def list_exams(
+    subject_id: str = Path(..., description="Subject ID"),
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
-    List all exams for current user
+    List all exams for a specific subject
+    
+    - **subject_id**: Subject ID
     
     Requires authentication
     
@@ -187,9 +208,19 @@ async def list_exams(user: Dict[str, Any] = Depends(get_current_user)):
     try:
         user_uid = user['uid']
         
-        # Get all exams for user
+        # Verify subject exists
         db = firestore.client()
-        exams_ref = db.collection('users').document(user_uid).collection('exams')
+        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
+        subject_doc = subject_ref.get()
+        
+        if not subject_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Subject not found'
+            )
+        
+        # Get all exams for subject
+        exams_ref = subject_ref.collection('exams')
         exams = exams_ref.order_by('created_at', direction=firestore.Query.DESCENDING).stream()
         
         exam_list = []
@@ -212,6 +243,8 @@ async def list_exams(user: Dict[str, Any] = Depends(get_current_user)):
             count=len(exam_list)
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
