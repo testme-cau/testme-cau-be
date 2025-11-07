@@ -17,7 +17,5 @@ team.txt
 .DS_Store
 Thumbs.db
 
-# Keep testme project only
-*
-!testme/
-!.gitignore
+# Keep testme project only (Negation doesn't work with * pattern, so explicitly ignore others)
+# The testme/ directory and its contents will be tracked by default
