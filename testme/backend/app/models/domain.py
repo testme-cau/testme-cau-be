@@ -17,9 +17,26 @@ class User(BaseModel):
         from_attributes = True
 
 
+class Subject(BaseModel):
+    """Subject (course) model"""
+    subject_id: str
+    user_id: str
+    name: str  # Required
+    description: Optional[str] = None
+    semester: Optional[str] = None  # e.g., "2025-1"
+    year: Optional[int] = None
+    color: Optional[str] = None  # e.g., "#FF5733"
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+
 class PDF(BaseModel):
     """PDF document model"""
     file_id: str
+    subject_id: str
     original_filename: str
     unique_filename: str
     storage_path: str
@@ -47,6 +64,7 @@ class Question(BaseModel):
 class Exam(BaseModel):
     """Exam model"""
     exam_id: str
+    subject_id: str
     pdf_id: str
     user_id: str
     questions: List[Question]

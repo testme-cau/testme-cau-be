@@ -21,18 +21,6 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-primary-100 mb-8"
-          >
-            <Sparkles className="w-4 h-4 text-primary-600" />
-            <span className="text-sm font-medium text-primary-700">
-              GPT-5 & Gemini AI 지원
-            </span>
-          </motion.div>
 
           {/* Main Headline */}
           <motion.h1
@@ -41,10 +29,10 @@ export function Hero() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight"
           >
-            시험 만들기,
+            시험으로 배우는,
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-600">
-              이제 쉽게!
+              가장 효과적인 공부법
             </span>
           </motion.h1>
 
@@ -55,9 +43,9 @@ export function Hero() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed"
           >
-            PDF 하나로 AI가 자동으로 시험을 만들어드려요.
+            강의 자료로 시험 문제를 풀고, 틀린 부분을 다시 학습하세요.
             <br />
-            채점은 물론, 피드백까지 한 번에!
+            능동적 회상으로 기억에 확실하게 남깁니다.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -72,17 +60,10 @@ export function Hero() {
                 size="lg" 
                 className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 group px-8 py-6 text-lg"
               >
-                무료로 시작하기
+                지금 바로 시작하기
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="border-2 border-primary-600 text-primary-700 hover:bg-primary-50 px-8 py-6 text-lg"
-            >
-              데모 보기
-            </Button>
           </motion.div>
 
           {/* Social Proof */}

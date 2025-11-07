@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.models.domain import Question, QuestionResult
+from app.models.domain import Question, QuestionResult, Subject
 
 
 class SuccessResponse(BaseModel):
@@ -18,6 +18,58 @@ class SuccessResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Operation completed successfully"
+            }
+        }
+
+
+class SubjectResponse(BaseModel):
+    """Response model for subject operations"""
+    success: bool = True
+    subject: Subject
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "subject": {
+                    "subject_id": "subj_123",
+                    "user_id": "user_456",
+                    "name": "데이터베이스",
+                    "description": "데이터베이스 설계 및 구현",
+                    "semester": "2025-1",
+                    "year": 2025,
+                    "color": "#FF5733",
+                    "created_at": "2025-11-07T12:00:00",
+                    "updated_at": None
+                }
+            }
+        }
+
+
+class SubjectListResponse(BaseModel):
+    """Response model for subject list"""
+    success: bool = True
+    subjects: List[Subject]
+    count: int
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "subjects": [
+                    {
+                        "subject_id": "subj_123",
+                        "user_id": "user_456",
+                        "name": "데이터베이스",
+                        "description": "데이터베이스 설계",
+                        "semester": "2025-1",
+                        "year": 2025,
+                        "color": "#FF5733",
+                        "created_at": "2025-11-07T12:00:00",
+                        "updated_at": None
+                    }
+                ],
+                "count": 1
             }
         }
 

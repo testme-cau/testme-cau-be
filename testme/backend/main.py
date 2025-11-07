@@ -81,13 +81,15 @@ def create_app() -> FastAPI:
     
     # Register routers
     from app.routes import main as main_routes
+    from app.routes import subject as subject_routes
     from app.routes import pdf as pdf_routes
     from app.routes import exam as exam_routes
     # from app.routes import admin as admin_routes
     
     app.include_router(main_routes.router)
-    app.include_router(pdf_routes.router, prefix="/api/pdf")
-    app.include_router(exam_routes.router, prefix="/api/exam")
+    app.include_router(subject_routes.router, prefix="/api/subjects")
+    app.include_router(pdf_routes.router, prefix="/api")
+    app.include_router(exam_routes.router, prefix="/api")
     # app.include_router(admin_routes.router, prefix="/admin", tags=["admin"])
     
     return app

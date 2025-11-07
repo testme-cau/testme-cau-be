@@ -2,6 +2,23 @@
 
 Next.js 14 기반 웹 프론트엔드
 
+## 환경 설정
+
+`.env.local` 파일을 생성하고 다음 환경 변수를 설정하세요:
+
+```env
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Backend API URL
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
+
 ## 실행 방법
 
 ```bash
@@ -24,8 +41,12 @@ npm start
 
 - Next.js 14 (App Router)
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS + shadcn/ui
 - React 18
+- Firebase (Authentication)
+- Axios (API Client)
+- React Hook Form + Zod (Form Validation)
+- Zustand (State Management)
 
 ## 프로젝트 구조
 
