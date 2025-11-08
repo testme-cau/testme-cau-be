@@ -34,41 +34,28 @@ def test_upload_pdf_without_auth(client: TestClient):
     assert response.status_code == 401
 
 
-@patch('firebase_admin.firestore.client')
-@patch('app.services.firebase_storage.FirebaseStorageService')
-@patch('app.dependencies.service.PDFService')
 def test_upload_pdf_success(
-    mock_pdf_service_class,
-    mock_storage_class,
-    mock_firestore,
     client: TestClient,
+    app,
     auth_override,
-    mock_storage_service,
-    mock_pdf_data,
-    mock_subject_data
+    mock_pdf_data
 ):
     """Test successful PDF upload"""
-    # Setup mocks
-    mock_storage_class.return_value = mock_storage_service
+    from datetime import datetime
+    from app.dependencies.service import get_pdf_service
     
-    # Mock subject exists check
-    mock_subject_doc = Mock()
-    mock_subject_doc.exists = True
-    mock_subject_doc.to_dict.return_value = mock_subject_data
+    # Mock PDFService
+    mock_pdf_service = Mock()
+    mock_pdf_service.upload_pdf.return_value = {
+        'file_id': 'test_pdf_123',
+        'original_filename': 'test.pdf',
+        'file_url': f'/api/subjects/{TEST_SUBJECT_ID}/pdfs/test_pdf_123/download',
+        'size': 1024,
+        'uploaded_at': datetime.utcnow()
+    }
     
-    mock_db = Mock()
-    
-    # Mock subject reference
-    mock_subject_ref = Mock()
-    mock_subject_ref.get.return_value = mock_subject_doc
-    
-    # Mock PDF reference
-    mock_pdf_ref = Mock()
-    mock_pdf_ref.set = Mock()
-    mock_subject_ref.collection.return_value.document.return_value = mock_pdf_ref
-    
-    mock_db.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_subject_ref
-    mock_firestore.return_value = mock_db
+    # Override dependency
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
     
     # Upload PDF
     pdf_content = b'%PDF-1.4\n%Mock PDF content\n%%EOF'
@@ -157,33 +144,23 @@ def test_list_pdfs(
     assert data['count'] >= 0
 
 
-@patch('firebase_admin.firestore.client')
-@patch('app.services.firebase_storage.FirebaseStorageService')
 def test_get_pdf_download_url(
-    mock_storage_class,
-    mock_firestore,
     client: TestClient,
-    auth_override,
-    mock_storage_service,
-    mock_pdf_data
+    app,
+    auth_override
 ):
     """Test getting PDF download URL"""
-    # Setup mocks
-    mock_storage_class.return_value = mock_storage_service
+    from app.dependencies.service import get_pdf_service
     
-    mock_pdf_data['subject_id'] = TEST_SUBJECT_ID
+    # Mock PDFService
+    mock_pdf_service = Mock()
+    mock_pdf_service.get_download_url.return_value = {
+        'download_url': 'https://storage.googleapis.com/test-bucket/test.pdf?signed=true',
+        'filename': 'test.pdf'
+    }
     
-    mock_pdf_doc = Mock()
-    mock_pdf_doc.exists = True
-    mock_pdf_doc.to_dict.return_value = mock_pdf_data
-    
-    mock_db = Mock()
-    mock_subject_ref = Mock()
-    mock_pdf_ref = Mock()
-    mock_pdf_ref.get.return_value = mock_pdf_doc
-    mock_subject_ref.collection.return_value.document.return_value = mock_pdf_ref
-    mock_db.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_subject_ref
-    mock_firestore.return_value = mock_db
+    # Override dependency
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
     
     # Get download URL
     response = client.get(
@@ -191,38 +168,29 @@ def test_get_pdf_download_url(
         follow_redirects=False
     )
     
-    assert response.status_code == 307  # Redirect
-    assert 'location' in response.headers
+    # Route returns JSON with download_url, not a redirect
+    assert response.status_code == 200
+    data = response.json()
+    assert data['success'] is True
+    assert 'download_url' in data
+    assert 'filename' in data
+    assert data['filename'] == 'test.pdf'
 
 
-@patch('firebase_admin.firestore.client')
-@patch('app.services.firebase_storage.FirebaseStorageService')
 def test_delete_pdf(
-    mock_storage_class,
-    mock_firestore,
     client: TestClient,
-    auth_override,
-    mock_storage_service,
-    mock_pdf_data
+    app,
+    auth_override
 ):
     """Test deleting PDF"""
-    # Setup mocks
-    mock_storage_class.return_value = mock_storage_service
+    from app.dependencies.service import get_pdf_service
     
-    mock_pdf_data['subject_id'] = TEST_SUBJECT_ID
+    # Mock PDFService
+    mock_pdf_service = Mock()
+    mock_pdf_service.delete_pdf.return_value = None  # delete returns None
     
-    mock_pdf_doc = Mock()
-    mock_pdf_doc.exists = True
-    mock_pdf_doc.to_dict.return_value = mock_pdf_data
-    
-    mock_db = Mock()
-    mock_subject_ref = Mock()
-    mock_pdf_ref = Mock()
-    mock_pdf_ref.get.return_value = mock_pdf_doc
-    mock_pdf_ref.delete = Mock()
-    mock_subject_ref.collection.return_value.document.return_value = mock_pdf_ref
-    mock_db.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_subject_ref
-    mock_firestore.return_value = mock_db
+    # Override dependency
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
     
     # Delete PDF
     response = client.delete(f"/api/subjects/{TEST_SUBJECT_ID}/pdfs/test_pdf_123")

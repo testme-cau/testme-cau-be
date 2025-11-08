@@ -47,7 +47,7 @@ class PDFService:
             Upload result with file information
         """
         # Verify subject exists and user owns it
-        self.subject_repo.get_by_id_with_ownership(user_id, subject_id)
+        self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
         
         # Validate file type
         if not allowed_file(filename, settings.allowed_extensions):
@@ -118,7 +118,7 @@ class PDFService:
             List of PDFs
         """
         # Verify subject exists
-        self.subject_repo.get_by_id_with_ownership(user_id, subject_id)
+        self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
         
         pdfs_data = self.pdf_repo.get_by_subject(user_id, subject_id)
         return [PDF(**data) for data in pdfs_data]

@@ -3,6 +3,7 @@ PDF repository for PDF-related data operations
 """
 from typing import List, Dict, Any
 from firebase_admin import firestore
+from fastapi import HTTPException, status
 from .base import BaseRepository
 from app.models.domain import PDF
 
@@ -38,7 +39,6 @@ class PDFRepository(BaseRepository[PDF]):
             docs = pdfs_ref.order_by('uploaded_at', direction=firestore.Query.DESCENDING).stream()
             return [doc.to_dict() for doc in docs]
         except Exception as e:
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to list PDFs: {str(e)}"
@@ -64,7 +64,6 @@ class PDFRepository(BaseRepository[PDF]):
             doc = pdfs_ref.document(pdf_id).get()
             
             if not doc.exists:
-                from fastapi import HTTPException, status
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="PDF not found"
@@ -74,17 +73,15 @@ class PDFRepository(BaseRepository[PDF]):
             
             # Verify ownership
             if pdf_data.get('user_id') != user_id:
-                from fastapi import HTTPException, status
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Unauthorized access"
                 )
             
             return pdf_data
+        except HTTPException:
+            raise
         except Exception as e:
-            if isinstance(e, HTTPException):
-                raise
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to get PDF: {str(e)}"
@@ -113,7 +110,6 @@ class PDFRepository(BaseRepository[PDF]):
             created_doc = pdf_ref.get()
             return created_doc.to_dict()
         except Exception as e:
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create PDF: {str(e)}"
@@ -133,17 +129,15 @@ class PDFRepository(BaseRepository[PDF]):
             pdf_ref = pdfs_ref.document(pdf_id)
             
             if not pdf_ref.get().exists:
-                from fastapi import HTTPException, status
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="PDF not found"
                 )
             
             pdf_ref.delete()
+        except HTTPException:
+            raise
         except Exception as e:
-            if isinstance(e, HTTPException):
-                raise
-            from fastapi import HTTPException, status
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to delete PDF: {str(e)}"
