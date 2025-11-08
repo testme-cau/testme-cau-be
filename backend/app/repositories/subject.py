@@ -34,13 +34,13 @@ class SubjectRepository(BaseRepository[Subject]):
         
         return self.list_by_user(user_id, order_by='created_at', direction='DESCENDING', filters=filters)
     
-    def get_by_id_with_ownership(self, user_id: str, subject_id: str) -> Dict[str, Any]:
+    def get_by_id_with_ownership(self, subject_id: str, user_id: str) -> Dict[str, Any]:
         """
         Get subject by ID and verify ownership.
         
         Args:
-            user_id: User ID
             subject_id: Subject ID
+            user_id: User ID
             
         Returns:
             Subject data
