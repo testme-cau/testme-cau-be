@@ -17,7 +17,8 @@ class AIServiceInterface(ABC):
         pdf_bytes: bytes,
         original_filename: str,
         num_questions: int = 10,
-        difficulty: str = "medium"
+        difficulty: str = "medium",
+        language: str = "ko"
     ) -> Dict[str, Any]:
         """
         Generate exam questions from PDF file
@@ -27,6 +28,7 @@ class AIServiceInterface(ABC):
             original_filename: Original filename (for AI upload)
             num_questions: Number of questions to generate
             difficulty: Difficulty level (easy, medium, hard)
+            language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
         
         Returns:
             Dict with structure:

@@ -4,7 +4,7 @@ Domain model validation tests - Pure business logic without infrastructure
 import pytest
 from datetime import datetime
 from pydantic import ValidationError
-from app.models.domain import Subject, PDF, Question, Exam, QuestionResult, GradingResult
+from app.models.domain import Subject, PDF, Question, Exam, QuestionResult, GradingResult, ScoringCriterion
 from app.models.requests import (
     SubjectCreateRequest,
     SubjectUpdateRequest,
@@ -196,6 +196,31 @@ class TestPDFModel:
         assert pdf.status == "uploaded"
 
 
+class TestScoringCriterionModel:
+    """Test ScoringCriterion domain model"""
+    
+    def test_scoring_criterion_creation(self):
+        """Test creating a scoring criterion"""
+        criterion = ScoringCriterion(
+            criterion="핵심 개념 설명",
+            points=8.0,
+            example="예: 데이터베이스는..."
+        )
+        
+        assert criterion.criterion == "핵심 개념 설명"
+        assert criterion.points == 8.0
+        assert criterion.example == "예: 데이터베이스는..."
+    
+    def test_scoring_criterion_without_example(self):
+        """Test criterion without example"""
+        criterion = ScoringCriterion(
+            criterion="논리적 구조",
+            points=5.0
+        )
+        
+        assert criterion.example is None
+
+
 class TestExamModels:
     """Test Exam domain models"""
     
@@ -213,6 +238,91 @@ class TestExamModels:
         assert question.type == "multiple_choice"
         assert len(question.options) == 4
         assert question.points == 10
+    
+    def test_question_with_enhanced_fields(self):
+        """Test question with new enhanced fields"""
+        question = Question(
+            id=1,
+            question="Python의 주요 특징은?",
+            type="multiple_choice",
+            options=["동적 타입", "정적 타입", "컴파일 언어", "저수준 언어"],
+            points=10,
+            topic="Programming Languages",
+            correct_answer="동적 타입",
+            model_answer="Python은 동적 타입 언어입니다. 변수의 타입이 런타임에 결정됩니다.",
+            keywords=None,
+            scoring_rubric=None
+        )
+        
+        assert question.topic == "Programming Languages"
+        assert question.correct_answer == "동적 타입"
+        assert question.model_answer is not None
+        assert "동적 타입" in question.model_answer
+    
+    def test_short_answer_with_keywords_and_rubric(self):
+        """Test short answer question with keywords and rubric"""
+        rubric = [
+            ScoringCriterion(criterion="핵심 개념", points=7.0),
+            ScoringCriterion(criterion="예시 제시", points=5.0),
+            ScoringCriterion(criterion="설명 명확성", points=3.0)
+        ]
+        
+        question = Question(
+            id=2,
+            question="객체지향 프로그래밍의 주요 특징을 설명하시오.",
+            type="short_answer",
+            options=None,
+            points=15,
+            topic="OOP",
+            correct_answer=None,
+            model_answer="객체지향 프로그래밍은 캡슐화, 상속, 다형성을 핵심으로 하는 프로그래밍 패러다임입니다.",
+            keywords=["캡슐화", "상속", "다형성"],
+            scoring_rubric=rubric
+        )
+        
+        assert question.type == "short_answer"
+        assert len(question.keywords) == 3
+        assert "캡슐화" in question.keywords
+        assert len(question.scoring_rubric) == 3
+        assert sum(c.points for c in question.scoring_rubric) == 15
+    
+    def test_essay_question_with_rubric(self):
+        """Test essay question with detailed rubric"""
+        rubric = [
+            ScoringCriterion(
+                criterion="주제 이해도",
+                points=8.0,
+                example="데이터베이스 정규화의 목적과 필요성 설명"
+            ),
+            ScoringCriterion(
+                criterion="정규화 단계 설명",
+                points=7.0,
+                example="1NF, 2NF, 3NF 각각 설명"
+            ),
+            ScoringCriterion(
+                criterion="예시 제시",
+                points=5.0,
+                example="구체적인 테이블 예시"
+            )
+        ]
+        
+        question = Question(
+            id=3,
+            question="데이터베이스 정규화에 대해 상세히 설명하시오.",
+            type="essay",
+            options=None,
+            points=20,
+            topic="Database Normalization",
+            correct_answer=None,
+            model_answer="데이터베이스 정규화는 중복을 제거하고 데이터 무결성을 보장하기 위한 프로세스입니다...",
+            keywords=None,
+            scoring_rubric=rubric
+        )
+        
+        assert question.type == "essay"
+        assert question.scoring_rubric is not None
+        assert len(question.scoring_rubric) == 3
+        assert question.scoring_rubric[0].example is not None
     
     def test_essay_question_no_options(self):
         """Test essay question without options"""

@@ -14,6 +14,16 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to add Firebase ID token
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Development mode: Use dev token if dev-logged-in is set
+    const isDev = process.env.NODE_ENV === 'development';
+    const devLoggedIn = typeof window !== 'undefined' && sessionStorage.getItem('dev-logged-in') === 'true';
+    
+    if (isDev && devLoggedIn) {
+      config.headers.Authorization = `Bearer dev-token-123`;
+      return config;
+    }
+    
+    // Production mode: Use Firebase Auth
     const user = auth.currentUser;
     if (user) {
       try {

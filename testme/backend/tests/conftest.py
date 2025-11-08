@@ -66,7 +66,7 @@ def mock_pdf_data():
 
 @pytest.fixture
 def mock_exam_data():
-    """Mock exam data"""
+    """Mock exam data with enhanced fields"""
     return {
         'exam_id': 'test_exam_123',
         'pdf_id': 'test_pdf_123',
@@ -77,14 +77,28 @@ def mock_exam_data():
                 'question': 'What is 2+2?',
                 'type': 'multiple_choice',
                 'options': ['2', '3', '4', '5'],
-                'points': 10
+                'points': 10,
+                'topic': 'Basic Arithmetic',
+                'correct_answer': '4',
+                'model_answer': 'The correct answer is 4 because 2+2 equals 4 in basic arithmetic.',
+                'keywords': None,
+                'scoring_rubric': None
             },
             {
                 'id': 2,
                 'question': 'Explain Python.',
                 'type': 'essay',
                 'options': None,
-                'points': 20
+                'points': 20,
+                'topic': 'Programming Languages',
+                'correct_answer': None,
+                'model_answer': 'Python is a high-level, interpreted programming language known for its simplicity and readability.',
+                'keywords': None,
+                'scoring_rubric': [
+                    {'criterion': 'Definition clarity', 'points': 8, 'example': None},
+                    {'criterion': 'Key features mentioned', 'points': 7, 'example': None},
+                    {'criterion': 'Examples provided', 'points': 5, 'example': None}
+                ]
             }
         ],
         'total_points': 30,
@@ -116,7 +130,7 @@ def mock_storage_service():
 
 @pytest.fixture
 def mock_ai_service():
-    """Mock AI Service"""
+    """Mock AI Service with enhanced response"""
     mock = Mock()
     mock.provider_name = 'gpt'
     mock.generate_exam_from_pdf = Mock(return_value={
@@ -128,7 +142,12 @@ def mock_ai_service():
                     'question': 'What is 2+2?',
                     'type': 'multiple_choice',
                     'options': ['2', '3', '4', '5'],
-                    'points': 10
+                    'points': 10,
+                    'topic': 'Basic Arithmetic',
+                    'correct_answer': '4',
+                    'model_answer': 'The correct answer is 4 because 2+2 equals 4 in basic arithmetic.',
+                    'keywords': None,
+                    'scoring_rubric': None
                 }
             ],
             'total_points': 10,

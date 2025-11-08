@@ -1,6 +1,7 @@
 """
 Exam routes (exam generation and management) - Subject-based structure
 """
+import logging
 from datetime import datetime
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Path
@@ -13,6 +14,7 @@ from app.services.firebase_storage import FirebaseStorageService
 from app.models.requests import ExamGenerationRequest
 from app.models.responses import ExamResponse, ExamListResponse, ExamInfo
 from app.models.domain import Exam
+from app.utils.exam_validator import validate_exam_response
 
 router = APIRouter(tags=["exam"])
 
@@ -55,6 +57,20 @@ async def generate_exam(
                 detail='Subject not found'
             )
         
+        subject_data = subject_doc.to_dict()
+        
+        # Determine language: Subject language > User language > Default (ko)
+        language = subject_data.get('language_preference')
+        if not language:
+            # Get user's language preference
+            user_ref = db.collection('users').document(user_uid)
+            user_doc = user_ref.get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                language = user_data.get('language_preference', 'ko')
+            else:
+                language = 'ko'
+        
         # Get PDF metadata from Firestore
         pdf_ref = subject_ref.collection('pdfs').document(pdf_id)
         pdf_doc = pdf_ref.get()
@@ -78,12 +94,13 @@ async def generate_exam(
         storage_service = FirebaseStorageService()
         pdf_bytes = storage_service.download_file(pdf_data['storage_path'])
         
-        # Generate exam using AI service
+        # Generate exam using AI service with language setting
         generation_result = ai_service.generate_exam_from_pdf(
             pdf_bytes,
             pdf_data['original_filename'],
             num_questions=num_questions,
-            difficulty=difficulty
+            difficulty=difficulty,
+            language=language
         )
         
         if not generation_result['success']:
@@ -92,7 +109,19 @@ async def generate_exam(
                 detail=f"Failed to generate exam: {generation_result.get('error', 'Unknown error')}"
             )
         
-        exam_data = generation_result['exam']
+        raw_exam_data = generation_result['exam']
+        
+        # Validate and refine the AI response
+        try:
+            exam_data = validate_exam_response(raw_exam_data, num_questions)
+            if exam_data.get('validation_issues'):
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Exam validation issues: {exam_data['validation_issues']}")
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Invalid exam data from AI: {str(e)}"
+            )
         
         # Save exam to Firestore under subject
         exams_ref = subject_ref.collection('exams')
