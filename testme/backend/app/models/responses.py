@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.models.domain import Question, QuestionResult, Subject
+from app.models.domain import Question, QuestionResult, Subject, Group
 
 
 class SuccessResponse(BaseModel):
@@ -18,6 +18,56 @@ class SuccessResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Operation completed successfully"
+            }
+        }
+
+
+class GroupResponse(BaseModel):
+    """Response model for group operations"""
+    success: bool = True
+    group: Group
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "group": {
+                    "group_id": "group_123",
+                    "user_id": "user_456",
+                    "name": "2025-1학기",
+                    "description": "2025년 1학기 과목들",
+                    "color": "#3B82F6",
+                    "icon": "calendar",
+                    "created_at": "2025-11-07T12:00:00",
+                    "updated_at": None
+                }
+            }
+        }
+
+
+class GroupListResponse(BaseModel):
+    """Response model for group list"""
+    success: bool = True
+    groups: List[Group]
+    count: int
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "success": True,
+                "groups": [
+                    {
+                        "group_id": "group_123",
+                        "user_id": "user_456",
+                        "name": "2025-1학기",
+                        "description": "2025년 1학기",
+                        "color": "#3B82F6",
+                        "icon": "calendar",
+                        "created_at": "2025-11-07T12:00:00",
+                        "updated_at": None
+                    }
+                ],
+                "count": 1
             }
         }
 

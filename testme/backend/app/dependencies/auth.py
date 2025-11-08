@@ -5,6 +5,7 @@ from typing import Dict, Any
 from fastapi import Request, HTTPException, status
 from firebase_admin import auth, firestore
 import logging
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,24 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
     
     # Extract token
     id_token = auth_header.split('Bearer ')[1]
+    
+    # Development mode: Allow dev-token-123
+    if settings.environment == 'development' and id_token == 'dev-token-123':
+        logger.info('Using development token bypass')
+        user_uid = 'dev-user-123'
+        
+        # Ensure user has a default subject
+        ensure_default_subject(user_uid)
+        
+        return {
+            'uid': user_uid,
+            'email': 'test@testme.dev',
+            'firebase_user': {
+                'uid': user_uid,
+                'email': 'test@testme.dev',
+                'name': 'Test User'
+            }
+        }
     
     try:
         # Verify token with Firebase

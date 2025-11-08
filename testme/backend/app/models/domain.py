@@ -12,6 +12,22 @@ class User(BaseModel):
     email: Optional[str] = None
     display_name: Optional[str] = None
     photo_url: Optional[str] = None
+    language_preference: str = "ko"  # ISO 639-1 code (ko, en, ja, zh, es, fr, etc.)
+    
+    class Config:
+        from_attributes = True
+
+
+class Group(BaseModel):
+    """Subject group model"""
+    group_id: str
+    user_id: str
+    name: str  # Required
+    description: Optional[str] = None
+    color: Optional[str] = None  # e.g., "#FF5733"
+    icon: Optional[str] = None  # Optional icon identifier
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -23,9 +39,9 @@ class Subject(BaseModel):
     user_id: str
     name: str  # Required
     description: Optional[str] = None
-    semester: Optional[str] = None  # e.g., "2025-1"
-    year: Optional[int] = None
+    group_id: Optional[str] = None  # Reference to Group
     color: Optional[str] = None  # e.g., "#FF5733"
+    language_preference: Optional[str] = None  # Override user's language (ko, en, ja, etc.)
     created_at: datetime
     updated_at: Optional[datetime] = None
     
@@ -49,6 +65,16 @@ class PDF(BaseModel):
         from_attributes = True
 
 
+class ScoringCriterion(BaseModel):
+    """채점 기준 항목"""
+    criterion: str  # 채점 항목 설명
+    points: float   # 이 항목의 배점
+    example: Optional[str] = None  # 예시 답변
+    
+    class Config:
+        from_attributes = True
+
+
 class Question(BaseModel):
     """Exam question model"""
     id: int
@@ -56,6 +82,13 @@ class Question(BaseModel):
     type: str  # "multiple_choice", "short_answer", "essay"
     options: Optional[List[str]] = None
     points: int
+    topic: Optional[str] = None  # 문제가 다루는 주제
+    
+    # 정답 및 채점 관련 필드
+    correct_answer: Optional[str] = None  # 객관식: 정답 선택지
+    model_answer: Optional[str] = None    # 모범 답안 전체
+    scoring_rubric: Optional[List[ScoringCriterion]] = None  # 채점 기준
+    keywords: Optional[List[str]] = None  # 단답형용 핵심 키워드
     
     class Config:
         from_attributes = True

@@ -1,12 +1,38 @@
+// Group Types
+export interface Group {
+  group_id: string;
+  user_id: string;
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface GroupCreateRequest {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface GroupUpdateRequest {
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}
+
 // Subject Types
 export interface Subject {
   subject_id: string;
   user_id: string;
   name: string;
   description?: string | null;
-  semester?: string | null;
-  year?: number | null;
+  group_id?: string | null;
   color?: string | null;
+  language_preference?: string | null;
   created_at: string;
   updated_at?: string | null;
 }
@@ -14,17 +40,17 @@ export interface Subject {
 export interface SubjectCreateRequest {
   name: string;
   description?: string;
-  semester?: string;
-  year?: number;
+  group_id?: string;
   color?: string;
+  language_preference?: string;
 }
 
 export interface SubjectUpdateRequest {
   name?: string;
   description?: string;
-  semester?: string;
-  year?: number;
+  group_id?: string;
   color?: string;
+  language_preference?: string;
 }
 
 // PDF Types
@@ -104,6 +130,17 @@ export interface APIResponse<T> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+export interface GroupResponse {
+  success: boolean;
+  group: Group;
+}
+
+export interface GroupListResponse {
+  success: boolean;
+  groups: Group[];
+  count: number;
 }
 
 export interface SubjectResponse {

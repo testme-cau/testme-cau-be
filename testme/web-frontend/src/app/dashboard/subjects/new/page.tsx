@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
 import { AppLayout } from "@/components/layouts/AppLayout";
@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { createSubject } from "@/lib/api/subjects";
-import { SubjectCreateRequest } from "@/types/api";
-import { ArrowLeft } from "lucide-react";
+import { groupsApi } from "@/lib/api/groups";
+import { SubjectCreateRequest, Group } from "@/types/api";
+import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 
 const COLORS = [
@@ -29,20 +30,49 @@ export default function NewSubjectPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const [formData, setFormData] = useState<SubjectCreateRequest>({
     name: "",
     description: "",
-    semester: "",
-    year: new Date().getFullYear(),
+    group_id: undefined,
     color: COLORS[0],
   });
+
+  useEffect(() => {
+    loadGroups();
+  }, []);
+
+  const loadGroups = async () => {
+    try {
+      setLoadingGroups(true);
+      const data = await groupsApi.getGroups();
+      setGroups(data);
+    } catch (error: any) {
+      console.error("Failed to load groups:", error);
+      toast({
+        title: "그룹 로드 실패",
+        description: "그룹을 불러올 수 없습니다",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await createSubject(formData);
+      // Remove group_id if it's "__create_new__"
+      const submitData = { ...formData };
+      if (submitData.group_id === "__create_new__") {
+        router.push("/dashboard/groups/new");
+        return;
+      }
+
+      await createSubject(submitData);
       toast({
         title: "과목 생성 완료",
         description: "새 과목이 성공적으로 생성되었습니다.",
@@ -114,39 +144,29 @@ export default function NewSubjectPage() {
                 />
               </div>
 
-              {/* Semester and Year */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="semester">학기</Label>
-                  <Input
-                    id="semester"
-                    value={formData.semester}
-                    onChange={(e) =>
-                      setFormData({ ...formData, semester: e.target.value })
-                    }
-                    placeholder="예: 2025-1"
-                    maxLength={20}
-                    disabled={loading}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="year">년도</Label>
-                  <Input
-                    id="year"
-                    type="number"
-                    value={formData.year || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        year: parseInt(e.target.value) || undefined,
-                      })
-                    }
-                    placeholder="예: 2025"
-                    min={2000}
-                    max={2100}
-                    disabled={loading}
-                  />
-                </div>
+              {/* Group Selection */}
+              <div>
+                <Label htmlFor="group">그룹 (선택)</Label>
+                <select
+                  id="group"
+                  value={formData.group_id || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, group_id: e.target.value || undefined })
+                  }
+                  disabled={loading || loadingGroups}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">그룹 없음</option>
+                  {groups.map((group) => (
+                    <option key={group.group_id} value={group.group_id}>
+                      {group.name}
+                    </option>
+                  ))}
+                  <option value="__create_new__">+ 새 그룹 생성</option>
+                </select>
+                {loadingGroups && (
+                  <p className="text-sm text-gray-500 mt-1">그룹 로딩 중...</p>
+                )}
               </div>
 
               {/* Color */}
