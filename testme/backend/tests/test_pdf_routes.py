@@ -35,8 +35,10 @@ def test_upload_pdf_without_auth(client: TestClient):
 
 
 @patch('firebase_admin.firestore.client')
-@patch('app.routes.pdf.FirebaseStorageService')
+@patch('app.services.firebase_storage.FirebaseStorageService')
+@patch('app.dependencies.service.PDFService')
 def test_upload_pdf_success(
+    mock_pdf_service_class,
     mock_storage_class,
     mock_firestore,
     client: TestClient,
@@ -156,7 +158,7 @@ def test_list_pdfs(
 
 
 @patch('firebase_admin.firestore.client')
-@patch('app.routes.pdf.FirebaseStorageService')
+@patch('app.services.firebase_storage.FirebaseStorageService')
 def test_get_pdf_download_url(
     mock_storage_class,
     mock_firestore,
@@ -194,7 +196,7 @@ def test_get_pdf_download_url(
 
 
 @patch('firebase_admin.firestore.client')
-@patch('app.routes.pdf.FirebaseStorageService')
+@patch('app.services.firebase_storage.FirebaseStorageService')
 def test_delete_pdf(
     mock_storage_class,
     mock_firestore,

@@ -25,15 +25,14 @@ class TestSubjectModel:
             user_id="user_123",
             name="데이터베이스",
             description="데이터베이스 설계",
-            semester="2025-1",
-            year=2025,
+            group_id="group_123",
             color="#FF5733",
             created_at=datetime.utcnow()
         )
         
         assert subject.subject_id == "subj_123"
         assert subject.name == "데이터베이스"
-        assert subject.year == 2025
+        assert subject.group_id == "group_123"
         assert subject.color == "#FF5733"
     
     def test_subject_minimal_required_fields(self):
@@ -47,8 +46,7 @@ class TestSubjectModel:
         
         assert subject.name == "알고리즘"
         assert subject.description is None
-        assert subject.semester is None
-        assert subject.year is None
+        assert subject.group_id is None
         assert subject.color is None
 
 
@@ -60,13 +58,12 @@ class TestSubjectRequestModels:
         request = SubjectCreateRequest(
             name="운영체제",
             description="운영체제 이론과 실습",
-            semester="2025-2",
-            year=2025,
+            group_id="group_123",
             color="#3498db"
         )
         
         assert request.name == "운영체제"
-        assert request.year == 2025
+        assert request.group_id == "group_123"
     
     def test_create_request_name_required(self):
         """Test that name is required"""
@@ -98,18 +95,14 @@ class TestSubjectRequestModels:
             assert request.color == color
     
     def test_create_request_year_range_validation(self):
-        """Test year range validation"""
-        # Valid year
-        request = SubjectCreateRequest(name="과목", year=2025)
-        assert request.year == 2025
+        """Test group_id validation"""
+        # Valid with group_id
+        request = SubjectCreateRequest(name="과목", group_id="group_123")
+        assert request.group_id == "group_123"
         
-        # Invalid year (too old)
-        with pytest.raises(ValidationError):
-            SubjectCreateRequest(name="과목", year=1999)
-        
-        # Invalid year (too far in future)
-        with pytest.raises(ValidationError):
-            SubjectCreateRequest(name="과목", year=2101)
+        # Valid without group_id
+        request2 = SubjectCreateRequest(name="과목")
+        assert request2.group_id is None
     
     def test_update_request_all_optional(self):
         """Test that all fields in update request are optional"""
@@ -117,8 +110,7 @@ class TestSubjectRequestModels:
         
         assert request.name is None
         assert request.description is None
-        assert request.semester is None
-        assert request.year is None
+        assert request.group_id is None
         assert request.color is None
     
     def test_update_request_partial_update(self):

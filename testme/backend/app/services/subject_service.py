@@ -53,7 +53,7 @@ class SubjectService:
         Returns:
             Subject
         """
-        subject_data = self.repo.get_by_id_with_ownership(user_id, subject_id)
+        subject_data = self.repo.get_by_id_with_ownership(subject_id, user_id)
         return Subject(**subject_data)
     
     def list_subjects(self, user_id: str, group_id: Optional[str] = None) -> List[Subject]:
@@ -88,7 +88,7 @@ class SubjectService:
             Updated Subject
         """
         # Verify ownership first
-        self.repo.get_by_id_with_ownership(user_id, subject_id)
+        self.repo.get_by_id_with_ownership(subject_id, user_id)
         
         # Build update data (only include provided fields)
         update_data = {}
@@ -120,7 +120,7 @@ class SubjectService:
             subject_id: Subject ID
         """
         # Verify ownership first
-        self.repo.get_by_id_with_ownership(user_id, subject_id)
+        self.repo.get_by_id_with_ownership(subject_id, user_id)
         
         # Delete subject with subcollections
         self.repo.delete_with_subcollections(user_id, subject_id)
