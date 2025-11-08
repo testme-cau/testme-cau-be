@@ -48,7 +48,7 @@ const item = {
 
 export function Features() {
   return (
-    <section className="py-24 bg-white">
+    <section id="features" className="py-24 bg-white">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <motion.div
@@ -78,12 +78,11 @@ export function Features() {
             const Icon = feature.icon;
             return (
               <motion.div key={index} variants={item}>
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer overflow-hidden">
-                  <CardContent className="p-6 relative">
-                    {/* Gradient background on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary-50 to-secondary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group cursor-pointer overflow-hidden relative">
+                  {/* Gradient background on hover - Card 레벨로 이동 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary-50 to-secondary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     
-                    <div className="relative z-10">
+                  <CardContent className="p-6 relative z-10">
                       {/* Icon with gradient */}
                       <div className={`inline-flex p-3 rounded-2xl bg-gradient-to-br ${feature.color} mb-4 group-hover:scale-110 transition-transform duration-300`}>
                         <Icon className="w-6 h-6 text-white" />
@@ -98,7 +97,6 @@ export function Features() {
                       <p className="text-gray-600 leading-relaxed">
                         {feature.description}
                       </p>
-                    </div>
                   </CardContent>
                 </Card>
               </motion.div>

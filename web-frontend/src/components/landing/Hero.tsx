@@ -1,11 +1,28 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export function Hero() {
+  const [ctaOpacity, setCtaOpacity] = useState(1);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const triggerHeight = window.innerHeight * 0.3;
+      // 스크롤 시 CTA 버튼 페이드아웃 (0.3vh ~ 0.5vh 사이에서)
+      const opacity = Math.max(0, 1 - (scrollPosition - triggerHeight * 0.7) / (triggerHeight * 0.8));
+      setCtaOpacity(opacity);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
       {/* Animated background elements */}
@@ -21,6 +38,17 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
+          {/* Large Logo */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="mb-12 flex justify-center"
+          >
+            <div className="transform scale-[2.5] mb-8">
+              <Logo size="lg" />
+            </div>
+          </motion.div>
 
           {/* Main Headline */}
           <motion.h1
@@ -48,11 +76,12 @@ export function Hero() {
             능동적 회상으로 기억에 확실하게 남깁니다.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - 스크롤 시 페이드아웃 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
+            style={{ opacity: ctaOpacity }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
             <Link href="/login">
@@ -60,7 +89,7 @@ export function Hero() {
                 size="lg" 
                 className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 group px-8 py-6 text-lg"
               >
-                지금 바로 시작하기
+                시작하기
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

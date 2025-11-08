@@ -36,6 +36,46 @@ class GPTService(AIServiceInterface):
         ]
         self.active_model: Optional[str] = None
         self.logger = logging.getLogger(__name__)
+        
+        # JSON Schema for structured exam generation
+        self.exam_schema = {
+            "type": "object",
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer"},
+                            "question": {"type": "string"},
+                            "type": {"type": "string", "enum": ["multiple_choice", "short_answer", "essay"]},
+                            "options": {"type": ["array", "null"], "items": {"type": "string"}},
+                            "points": {"type": "integer"},
+                            "topic": {"type": "string"},
+                            "correct_answer": {"type": ["string", "null"]},
+                            "model_answer": {"type": "string"},
+                            "keywords": {"type": ["array", "null"], "items": {"type": "string"}},
+                            "scoring_rubric": {
+                                "type": ["array", "null"],
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "criterion": {"type": "string"},
+                                        "points": {"type": "number"},
+                                        "example": {"type": ["string", "null"]}
+                                    },
+                                    "required": ["criterion", "points"]
+                                }
+                            }
+                        },
+                        "required": ["id", "question", "type", "points", "model_answer"]
+                    }
+                },
+                "total_points": {"type": "integer"},
+                "estimated_time": {"type": "integer"}
+            },
+            "required": ["questions", "total_points", "estimated_time"]
+        }
 
     @property
     def model(self) -> str:
@@ -138,7 +178,7 @@ class GPTService(AIServiceInterface):
         raise last_error  # type: ignore[misc]
 
     # ---------- public methods ----------
-    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium") -> Dict[str, Any]:
+    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium", language: str = "ko") -> Dict[str, Any]:
         """
         Generate exam from PDF file using OpenAI File API.
         
@@ -147,6 +187,7 @@ class GPTService(AIServiceInterface):
             original_filename: Original filename (for OpenAI file upload)
             num_questions: Number of questions to generate
             difficulty: Difficulty level (easy, medium, hard)
+            language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
         
         Returns:
             Dict with success status and exam data
@@ -165,20 +206,73 @@ class GPTService(AIServiceInterface):
             
             self._log_warn(f"Uploaded PDF to OpenAI: {file_id}")
             
-            # Create assistant for exam generation
+            # Get language name
+            from app.utils.language_utils import get_language_name
+            lang_name = get_language_name(language)
+            
+            # Create assistant for exam generation with improved instructions
+            instructions = (
+                "You are an expert university exam creator.\n\n"
+                
+                f"LANGUAGE REQUIREMENT:\n"
+                f"ALL questions, options, and answers MUST be in {lang_name}.\n"
+                f"Generate questions and answers entirely in {lang_name}.\n\n"
+                
+                "QUALITY REQUIREMENTS:\n"
+                "1. Test UNDERSTANDING and APPLICATION, not just memorization\n"
+                "2. Questions must cover different topics from the PDF\n"
+                "3. Clear, unambiguous wording\n"
+                "4. Professional academic language\n\n"
+                
+                f"TASK: Generate {num_questions} questions at {difficulty} difficulty.\n\n"
+                
+                "DIFFICULTY LEVELS:\n"
+                "- easy: Direct recall from material\n"
+                "- medium: Apply concepts to new situations\n"
+                "- hard: Analyze, synthesize, evaluate\n\n"
+                
+                "QUESTION DISTRIBUTION:\n"
+                "- Multiple choice: ~40% (exactly 4 options)\n"
+                "- Short answer: ~40% (2-3 sentences expected)\n"
+                "- Essay: ~20% (paragraph-length)\n\n"
+                
+                "IMPORTANT - INCLUDE ANSWERS AND RUBRICS:\n"
+                "For MULTIPLE CHOICE:\n"
+                "  - correct_answer: The correct option text\n"
+                "  - model_answer: Explanation why this is correct\n\n"
+                
+                "For SHORT ANSWER:\n"
+                "  - model_answer: Complete ideal answer (2-3 sentences)\n"
+                "  - keywords: List of essential terms that must appear\n"
+                "  - scoring_rubric: Breakdown by points\n\n"
+                
+                "For ESSAY:\n"
+                "  - model_answer: Comprehensive ideal answer\n"
+                "  - scoring_rubric: Detailed criteria with point allocation\n\n"
+                
+                "Each question must include:\n"
+                "- id: sequential number\n"
+                "- question: the question text\n"
+                "- type: multiple_choice, short_answer, or essay\n"
+                "- options: array of 4 choices for multiple_choice, null otherwise\n"
+                "- points: integer score value\n"
+                "- topic: brief topic this question covers\n"
+                "- correct_answer: for multiple_choice (the correct option text)\n"
+                "- model_answer: complete ideal answer for all types\n"
+                "- keywords: for short_answer (list of key terms)\n"
+                "- scoring_rubric: for short_answer and essay (array of criterion objects)\n\n"
+                
+                "Scoring rubric format:\n"
+                '[{"criterion": "description", "points": number, "example": "optional example"}]\n'
+                "The points in rubric items should sum to the question's total points.\n"
+            )
+            
             assistant = self.client.beta.assistants.create(
                 name="Exam Generator",
-                instructions=(
-                    f"You are an expert exam creator. "
-                    f"Analyze the provided PDF lecture material and generate {num_questions} exam questions. "
-                    f"Difficulty level: {difficulty}. "
-                    "Create a mix of multiple choice (40%), short answer (40%), and essay questions (20%). "
-                    "Return ONLY valid JSON with this exact structure: "
-                    '{"questions": [{"id": 1, "question": "...", "type": "multiple_choice|short_answer|essay", '
-                    '"options": ["A", "B", "C", "D"], "points": 10}], "total_points": 100, "estimated_time": 60}'
-                ),
+                instructions=instructions,
                 model=self.model_candidates[0],  # Use primary model
                 tools=[{"type": "file_search"}],
+                response_format={"type": "json_schema", "json_schema": {"name": "exam_response", "schema": self.exam_schema}}
             )
             
             # Create thread and attach file

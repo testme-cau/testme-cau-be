@@ -15,7 +15,7 @@ const steps = [
     number: '02',
     icon: Sparkles,
     title: 'AI가 시험 생성',
-    description: 'GPT-5 또는 Gemini AI가 PDF를 분석하고, 맞춤형 시험 문제를 자동으로 만들어드려요.',
+    description: 'AI가 PDF를 분석하고, 맞춤형 시험 문제를 자동으로 만들어드려요.',
     color: 'from-secondary-500 to-secondary-600',
   },
   {
@@ -29,7 +29,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="py-24 bg-white relative overflow-hidden">
+    <section id="how-it-works" className="py-24 bg-white relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-50/30 to-transparent"></div>
       
