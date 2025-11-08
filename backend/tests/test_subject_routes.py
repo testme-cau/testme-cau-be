@@ -184,39 +184,40 @@ def test_get_subject_not_found(client, auth_override):
         assert response.status_code == 404
 
 
-def test_update_subject_success(client, auth_override, mock_subject_data):
+def test_update_subject_success(client, app, auth_override):
     """Test successful subject update"""
-    with patch('firebase_admin.firestore.client') as mock_firestore:
-        # Setup mocks
-        mock_db = Mock()
-        mock_firestore.return_value = mock_db
-        
-        updated_data = mock_subject_data.copy()
-        updated_data['name'] = '데이터베이스 시스템'
-        
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = mock_subject_data
-        
-        mock_doc_ref = Mock()
-        mock_doc_ref.get.side_effect = [mock_doc, Mock(to_dict=Mock(return_value=updated_data))]
-        mock_doc_ref.update = Mock()
-        
-        mock_db.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref
-        
-        # Patch SERVER_TIMESTAMP
-        with patch('firebase_admin.firestore.SERVER_TIMESTAMP', datetime.utcnow()):
-            # Make request
-            response = client.put(
-                "/api/subjects/test_subject_123",
-                json={"name": "데이터베이스 시스템"}
-            )
-        
-        # Assertions
-        assert response.status_code == 200
-        data = response.json()
-        assert data['success'] is True
-        assert data['subject']['name'] == '데이터베이스 시스템'
+    from app.models.domain import Subject
+    from app.dependencies.service import get_subject_service
+    
+    # Mock SubjectService
+    mock_subject_service = Mock()
+    
+    updated_subject = Subject(
+        subject_id="test_subject_123",
+        user_id="test_user_123",
+        name="데이터베이스 시스템",
+        description="데이터베이스 설계 및 구현",
+        group_id=None,
+        color="#FF5733",
+        created_at=datetime.utcnow()
+    )
+    
+    mock_subject_service.update_subject.return_value = updated_subject
+    
+    # Override dependency
+    app.dependency_overrides[get_subject_service] = lambda: mock_subject_service
+    
+    # Make request
+    response = client.put(
+        "/api/subjects/test_subject_123",
+        json={"name": "데이터베이스 시스템"}
+    )
+    
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data['success'] is True
+    assert data['subject']['name'] == '데이터베이스 시스템'
 
 
 def test_update_subject_not_found(client, auth_override):
