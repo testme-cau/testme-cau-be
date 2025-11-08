@@ -1,20 +1,17 @@
 """
 Exam routes (exam generation and management) - Subject-based structure
 """
-import logging
 from datetime import datetime
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Path
-from firebase_admin import firestore
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.ai_service import get_ai_service_dependency
+from app.dependencies.service import get_exam_service
 from app.services.ai_service_interface import AIServiceInterface
-from app.services.firebase_storage import FirebaseStorageService
+from app.services.exam_service import ExamService
 from app.models.requests import ExamGenerationRequest
 from app.models.responses import ExamResponse, ExamListResponse, ExamInfo
-from app.models.domain import Exam
-from app.utils.exam_validator import validate_exam_response
 
 router = APIRouter(tags=["exam"])
 
@@ -24,7 +21,8 @@ async def generate_exam(
     subject_id: str = Path(..., description="Subject ID"),
     request: ExamGenerationRequest = ...,
     user: Dict[str, Any] = Depends(get_current_user),
-    ai_service: AIServiceInterface = Depends(get_ai_service_dependency)
+    ai_service: AIServiceInterface = Depends(get_ai_service_dependency),
+    exam_service: ExamService = Depends(get_exam_service)
 ):
     """
     Generate exam from PDF under a specific subject
@@ -40,135 +38,31 @@ async def generate_exam(
     Returns:
         ExamResponse with generated questions
     """
-    try:
-        user_uid = user['uid']
-        pdf_id = request.pdf_id
-        num_questions = request.num_questions
-        difficulty = request.difficulty
-        
-        # Verify subject exists
-        db = firestore.client()
-        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
-        subject_doc = subject_ref.get()
-        
-        if not subject_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Subject not found'
-            )
-        
-        subject_data = subject_doc.to_dict()
-        
-        # Determine language: Subject language > User language > Default (ko)
-        language = subject_data.get('language_preference')
-        if not language:
-            # Get user's language preference
-            user_ref = db.collection('users').document(user_uid)
-            user_doc = user_ref.get()
-            if user_doc.exists:
-                user_data = user_doc.to_dict()
-                language = user_data.get('language_preference', 'ko')
-            else:
-                language = 'ko'
-        
-        # Get PDF metadata from Firestore
-        pdf_ref = subject_ref.collection('pdfs').document(pdf_id)
-        pdf_doc = pdf_ref.get()
-        
-        if not pdf_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='PDF not found'
-            )
-        
-        pdf_data = pdf_doc.to_dict()
-        
-        # Verify ownership
-        if pdf_data.get('user_id') != user_uid:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Unauthorized'
-            )
-        
-        # Download PDF from Firebase Storage
-        storage_service = FirebaseStorageService()
-        pdf_bytes = storage_service.download_file(pdf_data['storage_path'])
-        
-        # Generate exam using AI service with language setting
-        generation_result = ai_service.generate_exam_from_pdf(
-            pdf_bytes,
-            pdf_data['original_filename'],
-            num_questions=num_questions,
-            difficulty=difficulty,
-            language=language
-        )
-        
-        if not generation_result['success']:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate exam: {generation_result.get('error', 'Unknown error')}"
-            )
-        
-        raw_exam_data = generation_result['exam']
-        
-        # Validate and refine the AI response
-        try:
-            exam_data = validate_exam_response(raw_exam_data, num_questions)
-            if exam_data.get('validation_issues'):
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Exam validation issues: {exam_data['validation_issues']}")
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Invalid exam data from AI: {str(e)}"
-            )
-        
-        # Save exam to Firestore under subject
-        exams_ref = subject_ref.collection('exams')
-        exam_ref = exams_ref.document()
-        exam_id = exam_ref.id
-        
-        exam_record = {
-            'exam_id': exam_id,
-            'subject_id': subject_id,
-            'pdf_id': pdf_id,
-            'user_id': user_uid,
-            'questions': exam_data['questions'],
-            'total_points': exam_data['total_points'],
-            'estimated_time': exam_data['estimated_time'],
-            'num_questions': num_questions,
-            'difficulty': difficulty,
-            'created_at': firestore.SERVER_TIMESTAMP,
-            'status': 'active',
-            'ai_provider': ai_service.provider_name
-        }
-        
-        exam_ref.set(exam_record)
-        
-        return ExamResponse(
-            success=True,
-            exam_id=exam_id,
-            questions=exam_data['questions'],
-            total_points=exam_data['total_points'],
-            estimated_time=exam_data['estimated_time'],
-            created_at=datetime.utcnow(),
-            ai_provider=ai_service.provider_name
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Exam generation failed: {str(e)}'
-        )
+    result = exam_service.generate_exam(
+        user['uid'],
+        subject_id,
+        request,
+        ai_service,
+        language='ko'
+    )
+    
+    return ExamResponse(
+        success=True,
+        exam_id=result['exam_id'],
+        questions=result['questions'],
+        total_points=result['total_points'],
+        estimated_time=result['estimated_time'],
+        created_at=result.get('created_at', datetime.utcnow()),
+        ai_provider=result['ai_provider']
+    )
 
 
 @router.get("/subjects/{subject_id}/exams/{exam_id}", response_model=Dict[str, Any])
 async def get_exam(
     subject_id: str = Path(..., description="Subject ID"),
     exam_id: str = Path(..., description="Exam ID"),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
 ):
     """
     Get exam details
@@ -181,48 +75,18 @@ async def get_exam(
     Returns:
         Exam details
     """
-    try:
-        user_uid = user['uid']
-        
-        # Get exam from Firestore
-        db = firestore.client()
-        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
-        exam_ref = subject_ref.collection('exams').document(exam_id)
-        exam_doc = exam_ref.get()
-        
-        if not exam_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Exam not found'
-            )
-        
-        exam_data = exam_doc.to_dict()
-        
-        # Verify ownership
-        if exam_data.get('user_id') != user_uid:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Unauthorized'
-            )
-        
-        return {
-            'success': True,
-            'exam': exam_data
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Failed to get exam: {str(e)}'
-        )
+    exam = exam_service.get_exam(user['uid'], subject_id, exam_id)
+    return {
+        'success': True,
+        'exam': exam.dict()
+    }
 
 
 @router.get("/subjects/{subject_id}/exams", response_model=ExamListResponse)
 async def list_exams(
     subject_id: str = Path(..., description="Subject ID"),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
 ):
     """
     List all exams for a specific subject
@@ -234,48 +98,24 @@ async def list_exams(
     Returns:
         ExamListResponse with list of exams
     """
-    try:
-        user_uid = user['uid']
-        
-        # Verify subject exists
-        db = firestore.client()
-        subject_ref = db.collection('users').document(user_uid).collection('subjects').document(subject_id)
-        subject_doc = subject_ref.get()
-        
-        if not subject_doc.exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Subject not found'
-            )
-        
-        # Get all exams for subject
-        exams_ref = subject_ref.collection('exams')
-        exams = exams_ref.order_by('created_at', direction=firestore.Query.DESCENDING).stream()
-        
-        exam_list = []
-        for exam in exams:
-            exam_data = exam.to_dict()
-            exam_list.append(ExamInfo(
-                exam_id=exam_data['exam_id'],
-                pdf_id=exam_data.get('pdf_id'),
-                num_questions=exam_data.get('num_questions', 0),
-                total_points=exam_data.get('total_points', 0),
-                difficulty=exam_data.get('difficulty', 'medium'),
-                created_at=exam_data.get('created_at', datetime.utcnow()),
-                status=exam_data.get('status', 'active'),
-                ai_provider=exam_data.get('ai_provider')
-            ))
-        
-        return ExamListResponse(
-            success=True,
-            exams=exam_list,
-            count=len(exam_list)
+    exams = exam_service.list_exams(user['uid'], subject_id)
+    
+    exam_list = [
+        ExamInfo(
+            exam_id=exam.exam_id,
+            pdf_id=exam.pdf_id,
+            num_questions=exam.num_questions,
+            total_points=exam.total_points,
+            difficulty=exam.difficulty,
+            created_at=exam.created_at,
+            status=exam.status,
+            ai_provider=exam.ai_provider
         )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Failed to list exams: {str(e)}'
-        )
+        for exam in exams
+    ]
+    
+    return ExamListResponse(
+        success=True,
+        exams=exam_list,
+        count=len(exam_list)
+    )

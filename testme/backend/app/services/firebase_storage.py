@@ -10,9 +10,20 @@ from werkzeug.utils import secure_filename
 class FirebaseStorageService:
     """Service class for Firebase Storage operations"""
     
-    def __init__(self):
-        """Initialize Firebase Storage bucket"""
-        self.bucket = storage.bucket()
+    def __init__(self, bucket=None):
+        """Initialize Firebase Storage bucket
+        
+        Args:
+            bucket: Optional Firebase Storage bucket (for testing)
+        """
+        self._bucket = bucket
+    
+    @property
+    def bucket(self):
+        """Lazy-load Firebase Storage bucket"""
+        if self._bucket is None:
+            self._bucket = storage.bucket()
+        return self._bucket
     
     def upload_file(self, file, user_id, original_filename):
         """
