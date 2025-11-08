@@ -64,6 +64,10 @@ def create_app() -> FastAPI:
         debug=settings.debug
     )
     
+    # Setup logging middleware
+    from app.middleware.logging import setup_logging_middleware
+    setup_logging_middleware(app)
+    
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
