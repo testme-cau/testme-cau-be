@@ -24,9 +24,9 @@ async def create_subject(
     
     - **name**: Subject name (required)
     - **description**: Subject description (optional)
-    - **semester**: Semester (optional, e.g., "2025-1")
-    - **year**: Year (optional)
+    - **group_id**: Group ID (optional)
     - **color**: Color hex code (optional, e.g., "#FF5733")
+    - **language_preference**: Language preference (optional, ISO 639-1 code)
     
     Requires authentication
     
@@ -47,9 +47,9 @@ async def create_subject(
             'user_id': user_uid,
             'name': request.name,
             'description': request.description,
-            'semester': request.semester,
-            'year': request.year,
+            'group_id': request.group_id,
             'color': request.color,
+            'language_preference': request.language_preference,
             'created_at': firestore.SERVER_TIMESTAMP,
             'updated_at': None
         }
@@ -172,9 +172,9 @@ async def update_subject(
     - **subject_id**: Subject ID
     - **name**: Subject name (optional)
     - **description**: Subject description (optional)
-    - **semester**: Semester (optional)
-    - **year**: Year (optional)
+    - **group_id**: Group ID (optional)
     - **color**: Color hex code (optional)
+    - **language_preference**: Language preference (optional, ISO 639-1 code)
     
     Requires authentication
     
@@ -210,12 +210,12 @@ async def update_subject(
             update_data['name'] = request.name
         if request.description is not None:
             update_data['description'] = request.description
-        if request.semester is not None:
-            update_data['semester'] = request.semester
-        if request.year is not None:
-            update_data['year'] = request.year
+        if request.group_id is not None:
+            update_data['group_id'] = request.group_id
         if request.color is not None:
             update_data['color'] = request.color
+        if request.language_preference is not None:
+            update_data['language_preference'] = request.language_preference
         
         if update_data:
             update_data['updated_at'] = firestore.SERVER_TIMESTAMP

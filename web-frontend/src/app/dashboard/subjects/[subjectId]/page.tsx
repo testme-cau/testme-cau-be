@@ -11,9 +11,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { getSubject, deleteSubject } from "@/lib/api/subjects";
+import { getSubject, deleteSubject, updateSubject } from "@/lib/api/subjects";
 import { getPDFs, uploadPDF, deletePDF, downloadPDF } from "@/lib/api/pdfs";
-import { Subject, PDF } from "@/types/api";
+import { groupsApi } from "@/lib/api/groups";
+import { Subject, PDF, Group } from "@/types/api";
 import {
   ArrowLeft,
   Upload,
@@ -22,7 +23,15 @@ import {
   Trash2,
   Settings,
   ClipboardList,
+  Folder,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SubjectDetailPage() {
   const params = useParams();
@@ -32,10 +41,13 @@ export default function SubjectDetailPage() {
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [pdfs, setPdfs] = useState<PDF[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pdfToDelete, setPdfToDelete] = useState<PDF | null>(null);
+  const [updatingGroup, setUpdatingGroup] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -43,12 +55,14 @@ export default function SubjectDetailPage() {
 
   const loadData = async () => {
     try {
-      const [subjectData, pdfsData] = await Promise.all([
+      const [subjectData, pdfsData, groupsData] = await Promise.all([
         getSubject(subjectId),
         getPDFs(subjectId),
+        groupsApi.getGroups(),
       ]);
       setSubject(subjectData);
       setPdfs(pdfsData || []);
+      setGroups(groupsData || []);
     } catch (error: any) {
       toast({
         title: "데이터 로드 실패",
@@ -57,15 +71,44 @@ export default function SubjectDetailPage() {
       });
       // 에러 발생 시에도 빈 배열로 설정
       setPdfs([]);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleGroupChange = async (groupId: string) => {
+    if (!subject) return;
+    
+    setUpdatingGroup(true);
+    try {
+      await updateSubject(subjectId, {
+        name: subject.name,
+        description: subject.description,
+        group_id: groupId === "none" ? undefined : groupId,
+      });
+      
+      setSubject({
+        ...subject,
+        group_id: groupId === "none" ? undefined : groupId,
+      });
+      
+      toast({
+        title: "그룹 변경 완료",
+        description: "과목의 그룹이 변경되었습니다.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "그룹 변경 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingGroup(false);
+    }
+  };
 
+  const validateAndUploadFile = async (file: File) => {
     if (file.type !== "application/pdf") {
       toast({
         title: "파일 형식 오류",
@@ -100,7 +143,42 @@ export default function SubjectDetailPage() {
       });
     } finally {
       setUploading(false);
-      e.target.value = "";
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await validateAndUploadFile(file);
+    e.target.value = "";
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      await validateAndUploadFile(files[0]);
     }
   };
 
@@ -172,7 +250,7 @@ export default function SubjectDetailPage() {
               </Button>
             </Link>
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <div
                     className="h-4 w-4 rounded"
@@ -183,9 +261,31 @@ export default function SubjectDetailPage() {
                 {subject.description && (
                   <p className="mt-2 text-gray-600">{subject.description}</p>
                 )}
-                <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
-                  {subject.semester && <span>{subject.semester}</span>}
-                  {subject.year && <span>{subject.year}</span>}
+                
+                {/* Group Selection */}
+                <div className="mt-4 flex items-center gap-3">
+                  <Folder className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">그룹:</span>
+                  <Select
+                    value={subject.group_id || "none"}
+                    onValueChange={handleGroupChange}
+                    disabled={updatingGroup}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">그룹 없음</SelectItem>
+                      {groups.map((group) => (
+                        <SelectItem key={group.group_id} value={group.group_id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {updatingGroup && (
+                    <LoadingSpinner size="sm" />
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -201,14 +301,33 @@ export default function SubjectDetailPage() {
 
           {/* Upload Section */}
           <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">PDF 자료</h2>
-                <p className="mt-1 text-sm text-gray-600">
-                  강의 자료를 업로드하여 시험을 생성하세요
-                </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">PDF 자료</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    강의 자료를 업로드하여 시험을 생성하세요
+                  </p>
+                </div>
               </div>
-              <div>
+
+              {/* Drag and Drop Area */}
+              <div
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('pdf-upload')?.click()}
+                className={`
+                  relative border-2 border-dashed rounded-lg p-12 
+                  text-center cursor-pointer transition-colors
+                  ${isDragging 
+                    ? 'border-emerald-500 bg-emerald-50' 
+                    : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                  }
+                  ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+              >
                 <input
                   type="file"
                   id="pdf-upload"
@@ -217,23 +336,29 @@ export default function SubjectDetailPage() {
                   className="hidden"
                   disabled={uploading}
                 />
-                <label htmlFor="pdf-upload">
-                  <Button disabled={uploading} asChild>
-                    <span>
-                      {uploading ? (
-                        <>
-                          <LoadingSpinner size="sm" className="mr-2" />
-                          업로드 중...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          PDF 업로드
-                        </>
-                      )}
-                    </span>
-                  </Button>
-                </label>
+                
+                <div className="flex flex-col items-center justify-center gap-4">
+                  {uploading ? (
+                    <>
+                      <LoadingSpinner size="lg" />
+                      <p className="text-lg font-medium text-gray-700">
+                        업로드 중...
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className={`h-12 w-12 ${isDragging ? 'text-emerald-500' : 'text-gray-400'}`} />
+                      <div>
+                        <p className="text-lg font-medium text-gray-700">
+                          {isDragging ? 'PDF 파일을 여기에 놓으세요' : 'PDF 파일을 드래그하거나 클릭하여 업로드'}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          최대 16MB까지 업로드 가능
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

@@ -137,14 +137,14 @@ async def download_pdf(
 ):
     """
     Download PDF file from Firebase Storage
-    Returns a signed URL that redirects to the file
+    Returns a JSON response with signed URL
     
     - **subject_id**: Subject ID
     - **file_id**: UUID of the file
     - Requires authentication
     
     Returns:
-        Redirect to signed URL (1-hour expiration)
+        JSON with download_url (1-hour expiration)
     """
     try:
         user_uid = user['uid']
@@ -177,8 +177,12 @@ async def download_pdf(
             expiration=timedelta(hours=1)
         )
         
-        # Redirect to signed URL
-        return RedirectResponse(url=signed_url)
+        # Return JSON with download URL
+        return {
+            "success": True,
+            "download_url": signed_url,
+            "filename": pdf_data['original_filename']
+        }
         
     except HTTPException:
         raise
