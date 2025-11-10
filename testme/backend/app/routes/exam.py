@@ -2,8 +2,8 @@
 Exam routes (exam generation and management) - Subject-based structure
 """
 from datetime import datetime
-from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Path
+from typing import Dict, Any, List
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Body
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.ai_service import get_ai_service_dependency
@@ -115,3 +115,74 @@ async def list_exams(
         exams=exam_list,
         count=len(exam_list)
     )
+
+
+@router.post("/subjects/{subject_id}/exams/{exam_id}/submit")
+async def submit_exam(
+    subject_id: str = Path(..., description="Subject ID"),
+    exam_id: str = Path(..., description="Exam ID"),
+    answers: List[Dict[str, Any]] = Body(..., description="List of answers"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    ai_service: AIServiceInterface = Depends(get_ai_service_dependency),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    """
+    Submit exam answers and get automatic grading
+    
+    - **subject_id**: Subject ID
+    - **exam_id**: Exam ID  
+    - **answers**: [{"question_id": 1, "answer": "text"}, ...]
+    
+    Returns:
+        Submission ID, status, and grading result (if completed)
+    """
+    result = exam_service.submit_and_grade_exam(
+        user['uid'],
+        subject_id,
+        exam_id,
+        answers,
+        ai_service
+    )
+    
+    return {
+        'success': True,
+        'submission_id': result['submission_id'],
+        'status': result['status'],
+        'grading_result': result.get('grading_result'),
+        'error_message': result.get('error_message'),
+        'submitted_at': result['submitted_at'],
+        'graded_at': result.get('graded_at')
+    }
+
+
+@router.get("/subjects/{subject_id}/exams/{exam_id}/submission")
+async def get_my_submission(
+    subject_id: str = Path(..., description="Subject ID"),
+    exam_id: str = Path(..., description="Exam ID"),
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get my submission and grading result for an exam
+    
+    Returns:
+        Submission details with status and grading result
+    """
+    from app.repositories.submission import SubmissionRepository
+    submission_repo = SubmissionRepository()
+    
+    submission = submission_repo.get_by_user_and_exam(
+        user['uid'],
+        subject_id,
+        exam_id
+    )
+    
+    if not submission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No submission found for this exam"
+        )
+    
+    return {
+        'success': True,
+        'submission': submission
+    }
