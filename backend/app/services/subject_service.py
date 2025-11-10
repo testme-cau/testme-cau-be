@@ -87,12 +87,12 @@ class SubjectService:
         for data in subjects_data:
             subject_id = data.get('subject_id')
             
-            # Count PDFs
-            pdfs = self.pdf_repo.get_by_subject(subject_id, user_id)
+            # Count PDFs (correct parameter order: user_id, subject_id)
+            pdfs = self.pdf_repo.get_by_subject(user_id, subject_id)
             pdf_count = len(pdfs)
             
-            # Count Exams
-            exams = self.exam_repo.get_by_subject(subject_id, user_id)
+            # Count Exams (correct parameter order: user_id, subject_id)
+            exams = self.exam_repo.get_by_subject(user_id, subject_id)
             exam_count = len(exams)
             
             # Add counts to subject data
