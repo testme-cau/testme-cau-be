@@ -29,19 +29,15 @@ export function useAuth() {
     console.log('[useAuth] Mounted, NODE_ENV:', process.env.NODE_ENV);
     
     if (isDev) {
-      // 개발 모드: sessionStorage로 로그인 상태 확인
-      const devLoggedIn = sessionStorage.getItem('dev-logged-in');
+      // 개발 모드: 자동으로 로그인 상태로 설정
+      console.log('[useAuth] Development mode - Setting mock user (logged in)');
       
-      if (devLoggedIn === 'true') {
-        console.log('[useAuth] Development mode - Setting mock user (logged in)');
-        const mockUser = createMockUser() as User;
-        setUser(mockUser);
-        setIdToken('dev-token-123');
-      } else {
-        console.log('[useAuth] Development mode - No dev login, user is null');
-        setUser(null);
-        setIdToken(null);
-      }
+      // sessionStorage에 dev 로그인 상태 저장
+      sessionStorage.setItem('dev-logged-in', 'true');
+      
+      const mockUser = createMockUser() as User;
+      setUser(mockUser);
+      setIdToken('dev-token-123');
       setLoading(false);
       return; // Firebase Auth 실행 안 함
     }
