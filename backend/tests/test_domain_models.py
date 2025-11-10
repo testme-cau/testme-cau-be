@@ -375,13 +375,13 @@ class TestExamRequestModels:
     def test_exam_generation_request_valid(self):
         """Test valid exam generation request"""
         request = ExamGenerationRequest(
-            pdf_id="pdf_123",
+            pdf_ids=["pdf_123"],
             num_questions=5,
             difficulty="medium",
             ai_provider="gpt"
         )
         
-        assert request.pdf_id == "pdf_123"
+        assert request.pdf_ids == ["pdf_123"]
         assert request.num_questions == 5
         assert request.difficulty == "medium"
     
@@ -389,7 +389,7 @@ class TestExamRequestModels:
         """Test invalid difficulty value"""
         with pytest.raises(ValidationError):
             ExamGenerationRequest(
-                pdf_id="pdf_123",
+                pdf_ids=["pdf_123"],
                 num_questions=5,
                 difficulty="super_hard"  # Invalid
             )
@@ -399,7 +399,7 @@ class TestExamRequestModels:
         # Too few
         with pytest.raises(ValidationError):
             ExamGenerationRequest(
-                pdf_id="pdf_123",
+                pdf_ids=["pdf_123"],
                 num_questions=0,
                 difficulty="easy"
             )
@@ -407,7 +407,7 @@ class TestExamRequestModels:
         # Too many
         with pytest.raises(ValidationError):
             ExamGenerationRequest(
-                pdf_id="pdf_123",
+                pdf_ids=["pdf_123"],
                 num_questions=51,
                 difficulty="easy"
             )
@@ -415,7 +415,7 @@ class TestExamRequestModels:
     def test_exam_generation_default_values(self):
         """Test default values for exam generation"""
         request = ExamGenerationRequest(
-            pdf_id="pdf_123",
+            pdf_ids=["pdf_123"],
             num_questions=5
         )
         

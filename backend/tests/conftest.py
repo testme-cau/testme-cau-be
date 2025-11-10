@@ -160,7 +160,74 @@ def mock_ai_service():
             'total_score': 85.0,
             'max_score': 100.0,
             'percentage': 85.0,
-            'question_results': []
+            'question_results': [
+                {
+                    'question_id': 1,
+                    'score': 8.5,
+                    'max_points': 10,
+                    'feedback': 'Good answer',
+                    'is_correct': True
+                }
+            ]
         }
     })
     return mock
+
+
+@pytest.fixture
+def mock_submission_data():
+    """Mock submission data"""
+    return {
+        'submission_id': 'test_submission_123',
+        'exam_id': 'test_exam_123',
+        'subject_id': 'test_subject_123',
+        'user_id': 'test_user_123',
+        'answers': [
+            {'question_id': 1, 'answer': '4'},
+            {'question_id': 2, 'answer': 'Python is a programming language'}
+        ],
+        'grading_result': {
+            'total_score': 85.0,
+            'max_score': 100.0,
+            'percentage': 85.0,
+            'question_results': [
+                {
+                    'question_id': 1,
+                    'score': 10.0,
+                    'max_points': 10,
+                    'feedback': 'Correct!',
+                    'is_correct': True
+                },
+                {
+                    'question_id': 2,
+                    'score': 15.0,
+                    'max_points': 20,
+                    'feedback': 'Good answer but could be more detailed',
+                    'is_correct': False
+                }
+            ]
+        },
+        'ai_provider': 'gpt',
+        'submitted_at': datetime.utcnow(),
+        'graded_at': datetime.utcnow(),
+        'status': 'graded',
+        'error_message': None
+    }
+
+
+@pytest.fixture
+def mock_subject_data():
+    """Mock subject data"""
+    return {
+        'subject_id': 'test_subject_123',
+        'user_id': 'test_user_123',
+        'name': '테스트 과목',
+        'description': 'Test subject description',
+        'group_id': None,
+        'color': '#FF5733',
+        'language_preference': 'ko',
+        'pdf_count': 0,
+        'exam_count': 0,
+        'created_at': datetime.utcnow(),
+        'updated_at': None
+    }

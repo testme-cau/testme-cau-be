@@ -10,17 +10,11 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 interface PDFListProps {
   subjectId: string;
   initialPdfs: PDF[];
-  selectionMode?: boolean;
-  selectedPdfIds?: string[];
-  onPdfSelect?: (pdfId: string, selected: boolean) => void;
 }
 
 export function PDFList({ 
   subjectId, 
-  initialPdfs, 
-  selectionMode = false,
-  selectedPdfIds = [],
-  onPdfSelect 
+  initialPdfs
 }: PDFListProps) {
   const [pdfs, setPdfs] = useState<PDF[]>(initialPdfs);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -92,9 +86,6 @@ export function PDFList({
             subjectId={subjectId}
             onDownload={handleDownload}
             onDelete={handleDeleteClick}
-            selectionMode={selectionMode}
-            selected={selectedPdfIds.includes(pdf.file_id)}
-            onSelect={onPdfSelect}
           />
         ))}
       </div>

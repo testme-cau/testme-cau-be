@@ -162,4 +162,107 @@ class ExamService:
         
         exams_data = self.exam_repo.get_by_subject(user_id, subject_id)
         return [Exam(**data) for data in exams_data]
+    
+    def submit_and_grade_exam(
+        self,
+        user_id: str,
+        subject_id: str,
+        exam_id: str,
+        answers: List[Dict[str, Any]],
+        ai_service: AIServiceInterface
+    ) -> Dict[str, Any]:
+        """
+        답안 제출 및 자동 채점
+        
+        1. 시험 존재 확인
+        2. 답안 먼저 저장 (status: pending)
+        3. 채점 시도 (status: grading → graded/failed)
+        
+        Returns:
+            제출 정보 (submission_id, status, grading_result 등)
+        """
+        from app.repositories.submission import SubmissionRepository
+        submission_repo = SubmissionRepository()
+        
+        # 1. 시험 조회 및 검증
+        exam_data = self.exam_repo.get_by_id_with_ownership(user_id, subject_id, exam_id)
+        
+        # 2. 답안 먼저 저장
+        submission_data = {
+            'exam_id': exam_id,
+            'subject_id': subject_id,
+            'user_id': user_id,
+            'answers': answers,
+            'ai_provider': ai_service.provider_name,
+        }
+        created_submission = submission_repo.create_submission(
+            user_id, subject_id, exam_id, submission_data
+        )
+        
+        # 3. 채점 시도
+        try:
+            # 상태 변경: pending → grading
+            submission_repo.update_grading_result(
+                user_id, subject_id, exam_id, 
+                created_submission['submission_id'],
+                {'status': 'grading'}
+            )
+            
+            # PDF 다운로드
+            pdf_bytes = self.pdf_service.download_pdf_bytes(
+                user_id, subject_id, exam_data['pdf_id']
+            )
+            pdf_data = self.pdf_service.get_pdf(
+                user_id, subject_id, exam_data['pdf_id']
+            )
+            
+            # AI 채점
+            grading_result = ai_service.grade_exam_with_pdf(
+                pdf_bytes,
+                pdf_data.original_filename,
+                exam_data['questions'],
+                answers
+            )
+            
+            if grading_result['success']:
+                # 채점 성공 → graded
+                submission_repo.update_grading_result(
+                    user_id, subject_id, exam_id,
+                    created_submission['submission_id'],
+                    {
+                        'status': 'graded',
+                        'grading_result': grading_result['result']
+                    }
+                )
+                created_submission['status'] = 'graded'
+                created_submission['grading_result'] = grading_result['result']
+            else:
+                # AI 서비스가 실패 반환 → failed
+                error_msg = grading_result.get('error', 'Unknown error')
+                submission_repo.update_grading_result(
+                    user_id, subject_id, exam_id,
+                    created_submission['submission_id'],
+                    {
+                        'status': 'failed',
+                        'error_message': error_msg
+                    }
+                )
+                created_submission['status'] = 'failed'
+                created_submission['error_message'] = error_msg
+        
+        except Exception as e:
+            # 예외 발생 (네트워크, 타임아웃 등) → failed
+            logger.error(f"Grading exception: {e}")
+            submission_repo.update_grading_result(
+                user_id, subject_id, exam_id,
+                created_submission['submission_id'],
+                {
+                    'status': 'failed',
+                    'error_message': str(e)
+                }
+            )
+            created_submission['status'] = 'failed'
+            created_submission['error_message'] = str(e)
+        
+        return created_submission
 
