@@ -158,7 +158,7 @@ class ExamService:
             List of Exams
         """
         # Verify subject exists
-        self.subject_repo.get_by_id_with_ownership(user_id, subject_id)
+        self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
         
         exams_data = self.exam_repo.get_by_subject(user_id, subject_id)
         return [Exam(**data) for data in exams_data]
