@@ -26,13 +26,13 @@ class GPTService(AIServiceInterface):
         self.client = OpenAI(api_key=self.api_key)
 
         # Model configuration with fallback chain
-        env_model = model or os.getenv('OPENAI_MODEL', 'gpt-5')
+        # TODO: Change back to gpt-5 when it's supported in Assistants API
+        env_model = model or os.getenv('OPENAI_MODEL', 'gpt-4o')
         self.model_candidates: List[str] = [
             env_model,
-            'gpt-5',
-            'gpt-4.1',
             'gpt-4o',
             'gpt-4o-mini',
+            'gpt-4-turbo',
         ]
         self.active_model: Optional[str] = None
         self.logger = logging.getLogger(__name__)
