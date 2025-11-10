@@ -87,6 +87,10 @@ class SubjectService:
         for data in subjects_data:
             subject_id = data.get('subject_id')
             
+            # Skip subjects with empty or invalid subject_id
+            if not subject_id or not subject_id.strip():
+                continue
+            
             # Count PDFs (correct parameter order: user_id, subject_id)
             pdfs = self.pdf_repo.get_by_subject(user_id, subject_id)
             pdf_count = len(pdfs)
