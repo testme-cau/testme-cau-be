@@ -32,7 +32,9 @@ export default function DashboardPage() {
   const loadData = async () => {
     try {
       const subjectsData = await getSubjects();
-      setSubjects(subjectsData);
+      // Filter out subjects with empty subject_id
+      const validSubjects = subjectsData.filter(s => s.subject_id && s.subject_id.trim() !== '');
+      setSubjects(validSubjects);
     } catch (error: any) {
       toast({
         title: "데이터 로드 실패",
@@ -47,7 +49,9 @@ export default function DashboardPage() {
   const loadSubjects = async () => {
     try {
       const data = await getSubjects();
-      setSubjects(data);
+      // Filter out subjects with empty subject_id
+      const validSubjects = data.filter(s => s.subject_id && s.subject_id.trim() !== '');
+      setSubjects(validSubjects);
     } catch (error: any) {
       toast({
         title: "과목 로드 실패",
@@ -183,15 +187,15 @@ export default function DashboardPage() {
                         {subject.year && <span>{subject.year}</span>}
                       </div>
 
-                      {/* Stats (placeholder for now) */}
+                      {/* Stats */}
                       <div className="mt-4 flex items-center gap-4 border-t pt-4 text-sm">
                         <div className="flex items-center gap-1">
                           <FileText className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">0 PDFs</span>
+                          <span className="text-gray-600">{subject.pdf_count || 0} PDFs</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <ClipboardList className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">0 시험</span>
+                          <span className="text-gray-600">{subject.exam_count || 0} 시험</span>
                         </div>
                       </div>
                     </div>

@@ -33,6 +33,8 @@ export interface Subject {
   group_id?: string | null;
   color?: string | null;
   language_preference?: string | null;
+  pdf_count?: number;
+  exam_count?: number;
   created_at: string;
   updated_at?: string | null;
 }
