@@ -78,6 +78,56 @@ export default function ExamsListPage() {
     }
   };
 
+  const getSubmissionStatusBadge = (exam: any) => {
+    if (!exam.submission_status) {
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          미응시
+        </Badge>
+      );
+    }
+    
+    switch (exam.submission_status) {
+      case 'graded':
+        return (
+          <Badge className="bg-blue-100 text-blue-800">
+            채점완료
+          </Badge>
+        );
+      case 'grading':
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">
+            채점중
+          </Badge>
+        );
+      case 'failed':
+        return (
+          <Badge className="bg-red-100 text-red-800">
+            채점실패
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getButtonText = (exam: any) => {
+    if (!exam.submission_status) {
+      return "시험 응시하기";
+    }
+    
+    if (exam.submission_status === 'graded') {
+      return "결과 보기";
+    }
+    
+    if (exam.submission_status === 'grading' || exam.submission_status === 'pending') {
+      return "채점 확인하기";
+    }
+    
+    return "시험 보기";
+  };
+
   const handleDeleteClick = (exam: Exam, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -171,11 +221,19 @@ export default function ExamsListPage() {
                       {/* Header */}
                       <div className="mb-4 flex items-start justify-between">
                         <div className="flex-1">
+                          <div className="mb-2 flex items-center gap-2">
+                            {getSubmissionStatusBadge(exam)}
+                          </div>
                           <h3 className="text-lg font-semibold">
                             {exam.title || `시험 #${exam.exam_id.slice(-6)}`}
                           </h3>
                           <p className="mt-1 text-sm text-gray-500">
                             {new Date(exam.created_at).toLocaleDateString()} 생성
+                            {(exam as any).submission_status === 'graded' && (exam as any).score !== undefined && (
+                              <span className="ml-2 font-semibold text-blue-600">
+                                • {(exam as any).score}/{(exam as any).max_score}점
+                              </span>
+                            )}
                           </p>
                         </div>
                         <Button
@@ -218,7 +276,7 @@ export default function ExamsListPage() {
                       <div className="mt-4 border-t pt-4">
                         <Link href={`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`}>
                           <Button className="w-full" size="sm">
-                            시험 보기
+                            {getButtonText(exam)}
                           </Button>
                         </Link>
                       </div>
