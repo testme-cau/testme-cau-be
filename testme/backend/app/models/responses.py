@@ -198,31 +198,34 @@ class PDFListResponse(BaseModel):
 class ExamResponse(BaseModel):
     """Response model for exam generation/retrieval"""
     success: bool = True
-    exam_id: str
-    questions: List[Question]
-    total_points: int
-    estimated_time: int
-    created_at: datetime
-    ai_provider: Optional[str] = "gpt"
+    exam: Dict[str, Any]  # Exam object with all fields
     
     class Config:
         schema_extra = {
             "example": {
                 "success": True,
-                "exam_id": "exam_123",
-                "questions": [
-                    {
-                        "id": 1,
-                        "question": "What is the capital of France?",
-                        "type": "multiple_choice",
-                        "options": ["London", "Paris", "Berlin", "Madrid"],
-                        "points": 10
-                    }
-                ],
-                "total_points": 100,
-                "estimated_time": 60,
-                "created_at": "2025-11-06T12:00:00",
-                "ai_provider": "gpt"
+                "exam": {
+                    "exam_id": "exam_123",
+                    "subject_id": "subj_123",
+                    "user_id": "user_123",
+                    "pdf_id": "pdf_456",
+                    "questions": [
+                        {
+                            "id": 1,
+                            "question": "What is the capital of France?",
+                            "type": "multiple_choice",
+                            "options": ["London", "Paris", "Berlin", "Madrid"],
+                            "points": 10
+                        }
+                    ],
+                    "total_points": 100,
+                    "estimated_time": 60,
+                    "difficulty": "medium",
+                    "num_questions": 10,
+                    "created_at": "2025-11-06T12:00:00",
+                    "status": "active",
+                    "ai_provider": "gpt"
+                }
             }
         }
 
