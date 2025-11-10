@@ -46,14 +46,10 @@ async def generate_exam(
         language='ko'
     )
     
+    # Return exam object wrapped in ExamResponse
     return ExamResponse(
         success=True,
-        exam_id=result['exam_id'],
-        questions=result['questions'],
-        total_points=result['total_points'],
-        estimated_time=result['estimated_time'],
-        created_at=result.get('created_at', datetime.utcnow()),
-        ai_provider=result['ai_provider']
+        exam=result
     )
 
 
