@@ -299,7 +299,7 @@ class GPTService(AIServiceInterface):
             assistant = self.client.beta.assistants.create(
                 name="Exam Generator",
                 instructions=instructions,
-                model=self.model_candidates[0],  # Use primary model
+                model='gpt-4o',  # TODO: Use self.model_candidates[0] when gpt-5 is supported
                 tools=[{"type": "file_search"}],
                 response_format={"type": "json_schema", "json_schema": {"name": "exam_response", "schema": self.exam_schema}}
             )
