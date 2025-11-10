@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     
     # AI Services
     openai_api_key: str = Field(alias="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-5", alias="OPENAI_MODEL")
+    openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
     google_model: str = Field(default="gemini-1.5-pro", alias="GOOGLE_MODEL")
     default_ai_provider: str = Field(default="gpt", alias="DEFAULT_AI_PROVIDER")
