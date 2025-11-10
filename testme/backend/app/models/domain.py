@@ -42,6 +42,8 @@ class Subject(BaseModel):
     group_id: Optional[str] = None  # Reference to Group
     color: Optional[str] = None  # e.g., "#FF5733"
     language_preference: Optional[str] = None  # Override user's language (ko, en, ja, etc.)
+    pdf_count: Optional[int] = 0  # Number of PDFs in this subject
+    exam_count: Optional[int] = 0  # Number of exams in this subject
     created_at: datetime
     updated_at: Optional[datetime] = None
     
