@@ -140,6 +140,14 @@ class GeminiService(AIServiceInterface):
                 "- Short answer: ~40% (2-3 sentences expected)\n"
                 "- Essay: ~20% (paragraph-length)\n\n"
                 
+                "⚠️ SCORING REQUIREMENT:\n"
+                "The TOTAL points across all questions MUST equal exactly 100.\n"
+                "Distribute points appropriately across questions:\n"
+                "- Multiple choice: typically 5-10 points each\n"
+                "- Short answer: typically 10-15 points each\n"
+                "- Essay: typically 15-25 points each\n"
+                "Adjust individual question points so the sum equals 100.\n\n"
+                
                 "IMPORTANT - INCLUDE ANSWERS AND RUBRICS:\n"
                 "For MULTIPLE CHOICE:\n"
                 "  - correct_answer: The correct option text\n"
@@ -304,6 +312,14 @@ class GeminiService(AIServiceInterface):
                 "- Multiple choice: ~40% (exactly 4 options)\n"
                 "- Short answer: ~40% (2-3 sentences expected)\n"
                 "- Essay: ~20% (paragraph-length)\n\n"
+                
+                "⚠️ SCORING REQUIREMENT:\n"
+                "The TOTAL points across all questions MUST equal exactly 100.\n"
+                "Distribute points appropriately across questions:\n"
+                "- Multiple choice: typically 5-10 points each\n"
+                "- Short answer: typically 10-15 points each\n"
+                "- Essay: typically 15-25 points each\n"
+                "Adjust individual question points so the sum equals 100.\n\n"
                 
                 "IMPORTANT - INCLUDE ANSWERS AND RUBRICS:\n"
                 "For MULTIPLE CHOICE:\n"

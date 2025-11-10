@@ -23,8 +23,11 @@ def get_ai_service(provider: Optional[str] = None) -> AIServiceInterface:
         ValueError: If provider is not supported
     """
     # Use default provider if not specified
-    if provider is None:
+    if provider is None or provider == "":
         provider = settings.default_ai_provider
+    
+    if provider is None:
+        raise ValueError("AI provider not specified and no default configured")
     
     provider = provider.lower().strip()
     

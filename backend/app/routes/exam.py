@@ -3,7 +3,7 @@ Exam routes (exam generation and management) - Subject-based structure
 """
 from datetime import datetime
 from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Body, BackgroundTasks
 
 from app.dependencies.auth import get_current_user
 from app.dependencies.ai_service import get_ai_service_dependency
@@ -12,12 +12,16 @@ from app.services.ai_service_interface import AIServiceInterface
 from app.services.exam_service import ExamService
 from app.models.requests import ExamGenerationRequest
 from app.models.responses import ExamResponse, ExamListResponse, ExamInfo
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["exam"])
 
 
-@router.post("/subjects/{subject_id}/exams/generate", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/subjects/{subject_id}/exams/generate", response_model=ExamResponse, status_code=status.HTTP_202_ACCEPTED)
 async def generate_exam(
+    background_tasks: BackgroundTasks,
     subject_id: str = Path(..., description="Subject ID"),
     request: ExamGenerationRequest = ...,
     user: Dict[str, Any] = Depends(get_current_user),
@@ -25,10 +29,13 @@ async def generate_exam(
     exam_service: ExamService = Depends(get_exam_service)
 ):
     """
-    Generate exam from PDF under a specific subject
+    Generate exam from PDF under a specific subject (Async)
+    
+    This endpoint immediately returns a placeholder exam with status='pending'.
+    The actual exam generation happens in the background.
     
     - **subject_id**: Subject ID
-    - **pdf_id**: UUID of the uploaded PDF
+    - **pdf_ids**: List of PDF UUIDs (1-10)
     - **num_questions**: Number of questions to generate (1-50)
     - **difficulty**: Difficulty level (easy, medium, hard)
     - **ai_provider**: AI provider to use (gpt or gemini) - optional query parameter
@@ -36,20 +43,41 @@ async def generate_exam(
     Requires authentication
     
     Returns:
-        ExamResponse with generated questions
+        ExamResponse with placeholder exam (status='pending')
+        
+    Poll GET /subjects/{subject_id}/exams/{exam_id} to check status:
+        - pending: Initial state
+        - processing: Generation in progress
+        - completed: Exam ready
+        - failed: Generation failed
     """
-    result = exam_service.generate_exam(
+    logger.info(f"Received async exam generation request for subject {subject_id}")
+    
+    # Create placeholder exam immediately
+    placeholder_exam = exam_service.create_exam_placeholder(
         user['uid'],
         subject_id,
         request,
-        ai_service,
-        language='ko'
+        ai_service.provider_name
     )
     
-    # Return exam object wrapped in ExamResponse
+    # Schedule background task for actual generation
+    background_tasks.add_task(
+        exam_service.generate_exam_background,
+        user['uid'],
+        subject_id,
+        placeholder_exam['exam_id'],
+        request,
+        ai_service.provider_name,  # Pass provider name, not instance
+        'ko'
+    )
+    
+    logger.info(f"Placeholder exam created with ID {placeholder_exam['exam_id']}, background generation scheduled")
+    
+    # Return placeholder exam
     return ExamResponse(
         success=True,
-        exam=result
+        exam=placeholder_exam
     )
 
 
@@ -69,12 +97,12 @@ async def get_exam(
     Requires authentication
     
     Returns:
-        Exam details
+        Exam details (includes error_message if status is 'failed')
     """
-    exam = exam_service.get_exam(user['uid'], subject_id, exam_id)
+    exam_data = exam_service.exam_repo.get_by_id_with_ownership(user['uid'], subject_id, exam_id)
     return {
         'success': True,
-        'exam': exam.dict()
+        'exam': exam_data
     }
 
 
@@ -116,6 +144,28 @@ async def list_exams(
         exams=exam_list,
         count=len(exam_list)
     )
+
+
+@router.delete("/subjects/{subject_id}/exams/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam(
+    subject_id: str = Path(..., description="Subject ID"),
+    exam_id: str = Path(..., description="Exam ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    """
+    Delete an exam
+    
+    - **subject_id**: Subject ID
+    - **exam_id**: Exam ID to delete
+    
+    Requires authentication
+    
+    Returns:
+        204 No Content on success
+    """
+    exam_service.delete_exam(user['uid'], subject_id, exam_id)
+    return None
 
 
 @router.post("/subjects/{subject_id}/exams/{exam_id}/submit")
@@ -187,3 +237,4 @@ async def get_my_submission(
         'success': True,
         'submission': submission
     }
+

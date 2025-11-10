@@ -33,8 +33,13 @@ class SubjectService:
         Returns:
             Created Subject
         """
+        # Generate document ID first
+        collection_ref = self.repo._get_collection_ref(user_id)
+        doc_ref = collection_ref.document()
+        subject_id = doc_ref.id
+        
         subject_data = {
-            'subject_id': '',  # Will be auto-generated
+            'subject_id': subject_id,
             'user_id': user_id,
             'name': request.name,
             'description': request.description,
@@ -43,11 +48,11 @@ class SubjectService:
             'language_preference': request.language_preference,
         }
         
-        # Create in repository
-        created_data = self.repo.create(subject_data, user_id)
+        # Create in repository with specific document ID
+        created_data = self.repo.create(subject_data, user_id, doc_id=subject_id)
         
-        # Add the generated ID
-        created_data['subject_id'] = self.repo._get_collection_ref(user_id).document().id
+        # Ensure subject_id is in the returned data
+        created_data['subject_id'] = subject_id
         
         return Subject(**created_data)
     

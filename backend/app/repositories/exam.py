@@ -120,4 +120,66 @@ class ExamRepository(BaseRepository[Exam]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create exam: {str(e)}"
             )
+    
+    def update_exam_status(self, user_id: str, subject_id: str, exam_id: str, status: str) -> None:
+        """
+        Update exam status.
+        
+        Args:
+            user_id: User ID
+            subject_id: Subject ID
+            exam_id: Exam ID
+            status: New status (pending, processing, completed, failed)
+        """
+        try:
+            exams_ref = self._get_exam_collection_ref(user_id, subject_id)
+            exam_ref = exams_ref.document(exam_id)
+            exam_ref.update({'status': status})
+        except Exception as e:
+            from fastapi import HTTPException, status as http_status
+            raise HTTPException(
+                status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update exam status: {str(e)}"
+            )
+    
+    def update_exam(self, user_id: str, subject_id: str, exam_id: str, update_data: Dict[str, Any]) -> None:
+        """
+        Update exam with given data.
+        
+        Args:
+            user_id: User ID
+            subject_id: Subject ID
+            exam_id: Exam ID
+            update_data: Data to update
+        """
+        try:
+            exams_ref = self._get_exam_collection_ref(user_id, subject_id)
+            exam_ref = exams_ref.document(exam_id)
+            exam_ref.update(update_data)
+        except Exception as e:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update exam: {str(e)}"
+            )
+    
+    def delete_exam(self, user_id: str, subject_id: str, exam_id: str) -> None:
+        """
+        Delete an exam.
+        
+        Args:
+            user_id: User ID
+            subject_id: Subject ID
+            exam_id: Exam ID
+        """
+        try:
+            exams_ref = self._get_exam_collection_ref(user_id, subject_id)
+            exam_ref = exams_ref.document(exam_id)
+            exam_ref.delete()
+        except Exception as e:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete exam: {str(e)}"
+            )
 
