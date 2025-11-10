@@ -99,6 +99,7 @@ async def list_exams(
     exam_list = [
         ExamInfo(
             exam_id=exam.exam_id,
+            title=exam.title,
             pdf_id=exam.pdf_id,
             num_questions=exam.num_questions,
             total_points=exam.total_points,

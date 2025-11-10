@@ -205,7 +205,11 @@ def mock_submission_data():
                     'feedback': 'Good answer but could be more detailed',
                     'is_correct': False
                 }
-            ]
+            ],
+            'overall_feedback': 'You demonstrated solid understanding of the core concepts.',
+            'strengths': ['Clear explanation of basic concepts', 'Good use of examples'],
+            'weaknesses': ['Could be more detailed in explanations', 'Missing some advanced concepts'],
+            'study_recommendations': ['Review chapter 3 on advanced topics', 'Practice more problems on data structures']
         },
         'ai_provider': 'gpt',
         'submitted_at': datetime.utcnow(),
