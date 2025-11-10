@@ -14,6 +14,7 @@ import { generateExam } from "@/lib/api/exams";
 import { groupsApi } from "@/lib/api/groups";
 import { Subject, PDF, Group } from "@/types/api";
 import { SubjectHeader } from "@/components/subjects/SubjectHeader";
+import { SubjectGroupSelector } from "@/components/subjects/SubjectGroupSelector";
 import { PDFUploadZone } from "@/components/subjects/PDFUploadZone";
 import { PDFList } from "@/components/subjects/PDFList";
 import { ClipboardList, CheckSquare, X } from "lucide-react";
@@ -203,9 +204,15 @@ export default function SubjectDetailPage() {
           {/* Header */}
           <SubjectHeader
             subject={subject}
-            onGroupChange={handleGroupChange}
-            updatingGroup={updatingGroup}
+            subjectId={subjectId}
+          />
+
+          {/* Group Selector */}
+          <SubjectGroupSelector
+            currentGroupId={subject.group_id}
             groups={groups}
+            loading={updatingGroup}
+            onChange={handleGroupChange}
           />
 
           {/* Upload Section */}

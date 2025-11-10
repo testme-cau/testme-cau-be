@@ -139,3 +139,21 @@ class GradingResult(BaseModel):
     class Config:
         from_attributes = True
 
+
+class Submission(BaseModel):
+    """시험 답안 제출 모델"""
+    submission_id: str
+    exam_id: str
+    subject_id: str
+    user_id: str
+    answers: List[Dict[str, Any]]  # [{"question_id": 1, "answer": "..."}]
+    grading_result: Optional[GradingResult] = None
+    ai_provider: Optional[str] = None
+    submitted_at: datetime
+    graded_at: Optional[datetime] = None
+    status: str = "pending"  # pending, grading, graded, failed
+    error_message: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
