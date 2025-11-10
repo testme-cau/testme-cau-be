@@ -120,11 +120,22 @@ class SubjectUpdateRequest(BaseModel):
 
 
 class ExamGenerationRequest(BaseModel):
-    """Request model for exam generation"""
-    pdf_id: str = Field(..., description="UUID of the uploaded PDF")
+    """Request model for exam generation - supports multiple PDFs"""
+    pdf_ids: List[str] = Field(..., description="List of PDF UUIDs (minimum 1, maximum 10)")
     num_questions: int = Field(default=10, ge=1, le=50, description="Number of questions to generate")
     difficulty: str = Field(default="medium", description="Difficulty level: easy, medium, hard")
     ai_provider: Optional[str] = Field(default=None, description="AI provider to use: gpt or gemini")
+    
+    @validator('pdf_ids')
+    def validate_pdf_ids(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('At least one PDF ID is required')
+        if len(v) > 10:
+            raise ValueError('Maximum 10 PDFs allowed')
+        # Check for duplicates
+        if len(v) != len(set(v)):
+            raise ValueError('Duplicate PDF IDs are not allowed')
+        return v
     
     @validator('difficulty')
     def validate_difficulty(cls, v):
@@ -145,7 +156,7 @@ class ExamGenerationRequest(BaseModel):
     class Config:
         schema_extra = {
             "example": {
-                "pdf_id": "123e4567-e89b-12d3-a456-426614174000",
+                "pdf_ids": ["123e4567-e89b-12d3-a456-426614174000"],
                 "num_questions": 10,
                 "difficulty": "medium",
                 "ai_provider": "gpt"

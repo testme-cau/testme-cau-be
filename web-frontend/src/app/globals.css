@@ -87,6 +87,14 @@ body {
       background-position: 100% 50%;
     }
   }
+  
+  .bg-brand-gradient {
+    @apply bg-gradient-to-br from-primary-50 via-primary-50 to-secondary-50;
+  }
+  
+  .text-brand-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-secondary-600 text-transparent bg-clip-text;
+  }
 }
 
 

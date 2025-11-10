@@ -213,6 +213,151 @@ class GeminiService(AIServiceInterface):
                 'error': str(e),
             }
     
+    def generate_exam_from_multiple_pdfs(
+        self,
+        pdf_bytes_list: List[tuple[bytes, str]],
+        num_questions: int = 10,
+        difficulty: str = "medium",
+        language: str = "ko"
+    ) -> Dict[str, Any]:
+        """
+        Generate exam questions from multiple PDF files using Gemini
+        
+        Args:
+            pdf_bytes_list: List of tuples (pdf_bytes, original_filename)
+            num_questions: Number of questions to generate
+            difficulty: Difficulty level (easy, medium, hard)
+            language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
+        
+        Returns:
+            Dict with success status and exam data
+        """
+        try:
+            # Upload all PDFs to Gemini
+            uploaded_files = []
+            for pdf_bytes, original_filename in pdf_bytes_list:
+                pdf_file = io.BytesIO(pdf_bytes)
+                uploaded_file = genai.upload_file(pdf_file, mime_type='application/pdf')
+                uploaded_files.append(uploaded_file)
+                self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name} ({original_filename})")
+            
+            # Get language name
+            from app.utils.language_utils import get_language_name
+            lang_name = get_language_name(language)
+            
+            # Create improved prompt for multi-PDF exam generation
+            prompt = (
+                "You are an expert university exam creator.\n\n"
+                
+                f"LANGUAGE REQUIREMENT:\n"
+                f"ALL questions, options, and answers MUST be in {lang_name}.\n"
+                f"Generate questions and answers entirely in {lang_name}.\n\n"
+                
+                "QUALITY REQUIREMENTS:\n"
+                "1. Test UNDERSTANDING and APPLICATION, not just memorization\n"
+                "2. Questions must cover different topics from ALL the provided PDFs\n"
+                "3. Distribute questions across all materials\n"
+                "4. Clear, unambiguous wording\n"
+                "5. Professional academic language\n\n"
+                
+                f"TASK: Generate {num_questions} questions at {difficulty} difficulty from ALL {len(pdf_bytes_list)} PROVIDED PDFS.\n\n"
+                
+                "DIFFICULTY LEVELS:\n"
+                "- easy: Direct recall from material\n"
+                "- medium: Apply concepts to new situations\n"
+                "- hard: Analyze, synthesize, evaluate\n\n"
+                
+                "QUESTION DISTRIBUTION:\n"
+                "- Multiple choice: ~40% (exactly 4 options)\n"
+                "- Short answer: ~40% (2-3 sentences expected)\n"
+                "- Essay: ~20% (paragraph-length)\n\n"
+                
+                "IMPORTANT - INCLUDE ANSWERS AND RUBRICS:\n"
+                "For MULTIPLE CHOICE:\n"
+                "  - correct_answer: The correct option text\n"
+                "  - model_answer: Explanation why this is correct\n\n"
+                
+                "For SHORT ANSWER:\n"
+                "  - model_answer: Complete ideal answer (2-3 sentences)\n"
+                "  - keywords: List of essential terms that must appear\n"
+                "  - scoring_rubric: Breakdown by points\n\n"
+                
+                "For ESSAY:\n"
+                "  - model_answer: Comprehensive ideal answer\n"
+                "  - scoring_rubric: Detailed criteria with point allocation\n\n"
+                
+                "Each question must include:\n"
+                "- id: sequential number\n"
+                "- question: the question text\n"
+                "- type: multiple_choice, short_answer, or essay\n"
+                "- options: array of 4 choices for multiple_choice, null otherwise\n"
+                "- points: integer score value\n"
+                "- topic: brief topic this question covers\n"
+                "- correct_answer: for multiple_choice (the correct option text)\n"
+                "- model_answer: complete ideal answer for all types\n"
+                "- keywords: for short_answer (list of key terms)\n"
+                "- scoring_rubric: for short_answer and essay (array of criterion objects)\n\n"
+                
+                "Scoring rubric format:\n"
+                '[{"criterion": "description", "points": number, "example": "optional example"}]\n'
+                "The points in rubric items should sum to the question's total points.\n\n"
+                
+                "Generate the exam questions now based on ALL the PDF contents. Make sure to cover topics from all materials."
+            )
+            
+            # Generate exam with JSON mode
+            generation_config = genai.GenerationConfig(
+                response_mime_type="application/json",
+                response_schema=self.exam_schema
+            )
+            
+            # Combine all files and prompt for content generation
+            content_parts = uploaded_files + [prompt]
+            response = self.model.generate_content(
+                content_parts,
+                generation_config=generation_config
+            )
+            response_text = response.text
+            
+            # Parse JSON from response
+            try:
+                # Try direct parsing
+                exam_data = json.loads(response_text)
+            except json.JSONDecodeError:
+                # Try to extract JSON from response (in case of markdown code blocks)
+                import re
+                # Remove markdown code blocks if present
+                cleaned = re.sub(r'```json\s*', '', response_text)
+                cleaned = re.sub(r'```\s*', '', cleaned)
+                cleaned = cleaned.strip()
+                
+                # Try to find JSON object
+                match = re.search(r'\{[\s\S]*\}', cleaned)
+                if match:
+                    exam_data = json.loads(match.group(0))
+                else:
+                    raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
+            
+            # Delete all uploaded files
+            for uploaded_file in uploaded_files:
+                try:
+                    genai.delete_file(uploaded_file.name)
+                except Exception as e:
+                    self.logger.warning(f"Failed to delete file {uploaded_file.name}: {e}")
+            
+            return {
+                'success': True,
+                'exam': exam_data,
+                'model': self.model_name,
+            }
+            
+        except Exception as e:
+            self.logger.error(f'Gemini multi-PDF exam generation failed: {e}')
+            return {
+                'success': False,
+                'error': str(e),
+            }
+    
     def grade_exam_with_pdf(
         self,
         pdf_bytes: bytes,

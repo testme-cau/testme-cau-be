@@ -83,7 +83,7 @@ export default function LoginPage() {
   // 이미 로그인된 경우 대시보드로 이동 버튼 표시
   if (user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+      <div className="flex h-screen items-center justify-center bg-brand-gradient">
         <div className="text-center p-8 bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl max-w-md">
           <Logo size="xl" />
           <h2 className="mt-6 text-2xl font-bold text-gray-900">
@@ -95,7 +95,7 @@ export default function LoginPage() {
           <div className="mt-6 space-y-3">
             <Button
               size="lg"
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all"
+              className="w-full bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white shadow-md hover:shadow-lg transition-all"
               onClick={() => {
                 console.log('[LoginPage] 대시보드 이동 버튼 클릭');
                 window.location.href = '/dashboard';
@@ -134,7 +134,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-brand-gradient">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>

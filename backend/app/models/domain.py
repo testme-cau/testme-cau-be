@@ -97,10 +97,11 @@ class Question(BaseModel):
 
 
 class Exam(BaseModel):
-    """Exam model"""
+    """Exam model - supports multiple PDFs"""
     exam_id: str
     subject_id: str
-    pdf_id: str
+    pdf_id: str  # Keep for backward compatibility (first PDF ID)
+    pdf_ids: Optional[List[str]] = None  # New field for multiple PDFs
     user_id: str
     questions: List[Question]
     total_points: int

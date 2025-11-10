@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PDF } from "@/types/api";
 import { FileText, Download, Trash2, ClipboardList } from "lucide-react";
 
@@ -9,9 +10,20 @@ interface PDFItemProps {
   subjectId: string;
   onDownload: (pdfId: string) => void;
   onDelete: (pdf: PDF) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: (pdfId: string, selected: boolean) => void;
 }
 
-export function PDFItem({ pdf, subjectId, onDownload, onDelete }: PDFItemProps) {
+export function PDFItem({ 
+  pdf, 
+  subjectId, 
+  onDownload, 
+  onDelete, 
+  selectionMode = false,
+  selected = false,
+  onSelect 
+}: PDFItemProps) {
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -22,6 +34,12 @@ export function PDFItem({ pdf, subjectId, onDownload, onDelete }: PDFItemProps) 
     <Card key={pdf.file_id} className="p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {selectionMode && onSelect && (
+            <Checkbox
+              checked={selected}
+              onCheckedChange={(checked) => onSelect(pdf.file_id, checked as boolean)}
+            />
+          )}
           <FileText className="h-8 w-8 text-gray-400" />
           <div>
             <h3 className="font-medium">{pdf.original_filename}</h3>
@@ -32,14 +50,16 @@ export function PDFItem({ pdf, subjectId, onDownload, onDelete }: PDFItemProps) 
           </div>
         </div>
         <div className="flex gap-2">
-          <Link
-            href={`/dashboard/subjects/${subjectId}/pdfs/${pdf.file_id}/generate-exam`}
-          >
-            <Button size="sm">
-              <ClipboardList className="mr-2 h-4 w-4" />
-              시험 생성
-            </Button>
-          </Link>
+          {!selectionMode && (
+            <Link
+              href={`/dashboard/subjects/${subjectId}/pdfs/${pdf.file_id}/generate-exam`}
+            >
+              <Button size="sm">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                시험 생성
+              </Button>
+            </Link>
+          )}
           <Button
             size="sm"
             variant="outline"
