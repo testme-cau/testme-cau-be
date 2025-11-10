@@ -30,6 +30,7 @@ export default function SubjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [updatingGroup, setUpdatingGroup] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | undefined>();
 
   useEffect(() => {
     loadData();
@@ -89,24 +90,51 @@ export default function SubjectDetailPage() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
     setUploading(true);
-    try {
-      await uploadPDF(subjectId, file);
+    setUploadProgress({ current: 0, total: files.length });
+
+    let successCount = 0;
+    let failCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        await uploadPDF(subjectId, file);
+        successCount++;
+        setUploadProgress({ current: i + 1, total: files.length });
+      } catch (error: any) {
+        failCount++;
+        errors.push(`${file.name}: ${error.message}`);
+      }
+    }
+
+    // 결과 토스트
+    if (successCount > 0 && failCount === 0) {
       toast({
         title: "업로드 완료",
-        description: "PDF가 성공적으로 업로드되었습니다.",
+        description: `${successCount}개의 PDF가 성공적으로 업로드되었습니다.`,
       });
-      await loadData();
-    } catch (error: any) {
+    } else if (successCount > 0 && failCount > 0) {
       toast({
-        title: "업로드 실패",
-        description: error.message,
+        title: "일부 업로드 실패",
+        description: `${successCount}개 성공, ${failCount}개 실패`,
         variant: "destructive",
       });
-    } finally {
-      setUploading(false);
+    } else {
+      toast({
+        title: "업로드 실패",
+        description: errors[0] || "파일 업로드에 실패했습니다.",
+        variant: "destructive",
+      });
     }
+
+    setUploading(false);
+    setUploadProgress(undefined);
+    await loadData();
   };
 
 
@@ -159,6 +187,7 @@ export default function SubjectDetailPage() {
           <PDFUploadZone
             onFileUpload={handleFileUpload}
             uploading={uploading}
+            uploadProgress={uploadProgress}
           />
 
           {/* PDF List */}

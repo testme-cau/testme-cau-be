@@ -77,7 +77,8 @@ export default function NewSubjectPage() {
         title: "과목 생성 완료",
         description: "새 과목이 성공적으로 생성되었습니다.",
       });
-      router.push("/dashboard");
+      // Force page reload to show new subject
+      window.location.href = "/dashboard";
     } catch (error: any) {
       toast({
         title: "과목 생성 실패",

@@ -4,11 +4,12 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
 
 interface PDFUploadZoneProps {
-  onFileUpload: (file: File) => void;
+  onFileUpload: (files: File[]) => void;
   uploading: boolean;
+  uploadProgress?: { current: number; total: number };
 }
 
-export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
+export function PDFUploadZone({ onFileUpload, uploading, uploadProgress }: PDFUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragEnter = (e: React.DragEvent) => {
@@ -33,16 +34,18 @@ export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
     e.stopPropagation();
     setIsDragging(false);
 
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      onFileUpload(files[0]);
+    const files = Array.from(e.dataTransfer.files).filter(
+      (file) => file.type === "application/pdf"
+    );
+    if (files.length > 0) {
+      onFileUpload(files);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileUpload(file);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      onFileUpload(files);
       e.target.value = "";
     }
   };
@@ -84,6 +87,7 @@ export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
             onChange={handleFileInput}
             className="hidden"
             disabled={uploading}
+            multiple
           />
 
           <div className="flex flex-col items-center justify-center gap-4">
@@ -91,6 +95,11 @@ export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
               <>
                 <LoadingSpinner size="lg" />
                 <p className="text-lg font-medium text-gray-700">업로드 중...</p>
+                {uploadProgress && (
+                  <p className="text-sm text-gray-600">
+                    {uploadProgress.current}/{uploadProgress.total} 파일 완료
+                  </p>
+                )}
               </>
             ) : (
               <>
@@ -106,7 +115,7 @@ export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
                       : "PDF 파일을 드래그하거나 클릭하여 업로드"}
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    최대 16MB까지 업로드 가능
+                    최대 16MB까지 업로드 가능 • 여러 파일 동시 업로드 지원
                   </p>
                 </div>
               </>
