@@ -192,22 +192,48 @@ class ExamService:
         exam_data = self.exam_repo.get_by_id_with_ownership(user_id, subject_id, exam_id)
         return Exam(**exam_data)
     
-    def list_exams(self, user_id: str, subject_id: str) -> List[Exam]:
+    def list_exams(self, user_id: str, subject_id: str) -> List[Dict[str, Any]]:
         """
-        List all exams for a subject.
+        List all exams for a subject with submission status.
         
         Args:
             user_id: User ID
             subject_id: Subject ID
             
         Returns:
-            List of Exams
+            List of exam dictionaries with submission_status
         """
         # Verify subject exists
         self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
         
+        # Get all exams
         exams_data = self.exam_repo.get_by_subject(user_id, subject_id)
-        return [Exam(**data) for data in exams_data]
+        
+        # Get all submissions for this subject
+        from app.repositories.submission import SubmissionRepository
+        submission_repo = SubmissionRepository()
+        submissions_map = submission_repo.get_submissions_by_subject(user_id, subject_id)
+        
+        # Enrich exam data with submission status
+        enriched_exams = []
+        for exam_data in exams_data:
+            exam_id = exam_data.get('exam_id')
+            submission = submissions_map.get(exam_id)
+            
+            if submission:
+                exam_data['submission_status'] = submission.get('status')
+                exam_data['submission_id'] = submission.get('submission_id')
+                if submission.get('status') == 'graded':
+                    # Include score info for graded exams
+                    grading_result = submission.get('grading_result', {})
+                    exam_data['score'] = grading_result.get('total_score')
+                    exam_data['max_score'] = grading_result.get('max_score')
+            else:
+                exam_data['submission_status'] = None  # Not submitted
+            
+            enriched_exams.append(exam_data)
+        
+        return enriched_exams
     
     def submit_and_grade_exam(
         self,

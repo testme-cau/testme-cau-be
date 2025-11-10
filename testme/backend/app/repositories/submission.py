@@ -147,4 +147,45 @@ class SubmissionRepository:
         
         # 상위 N개만 반환
         return submissions_with_exam[:limit]
+    
+    def get_submissions_by_subject(
+        self,
+        user_id: str,
+        subject_id: str
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        과목의 모든 시험에 대한 제출 내역 조회 (exam_id로 매핑)
+        
+        Args:
+            user_id: 사용자 ID
+            subject_id: 과목 ID
+            
+        Returns:
+            exam_id를 키로 하는 제출 내역 딕셔너리
+            {exam_id: {submission_id, status, grading_result, ...}}
+        """
+        submissions_map = {}
+        
+        # 모든 시험 조회
+        exams_ref = (self.db.collection('users').document(user_id)
+                    .collection('subjects').document(subject_id)
+                    .collection('exams'))
+        
+        exams = exams_ref.stream()
+        
+        # 각 시험의 제출 기록 조회
+        for exam_doc in exams:
+            exam_id = exam_doc.id
+            submissions_ref = (exams_ref.document(exam_id)
+                             .collection('submissions')
+                             .where('user_id', '==', user_id)
+                             .limit(1))  # 사용자당 1개의 제출만
+            
+            for sub_doc in submissions_ref.stream():
+                sub_data = sub_doc.to_dict()
+                sub_data['submission_id'] = sub_doc.id
+                submissions_map[exam_id] = sub_data
+                break  # 첫 번째 제출만
+        
+        return submissions_map
 

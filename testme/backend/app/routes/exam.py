@@ -106,44 +106,29 @@ async def get_exam(
     }
 
 
-@router.get("/subjects/{subject_id}/exams", response_model=ExamListResponse)
+@router.get("/subjects/{subject_id}/exams")
 async def list_exams(
     subject_id: str = Path(..., description="Subject ID"),
     user: Dict[str, Any] = Depends(get_current_user),
     exam_service: ExamService = Depends(get_exam_service)
 ):
     """
-    List all exams for a specific subject
+    List all exams for a specific subject with submission status
     
     - **subject_id**: Subject ID
     
     Requires authentication
     
     Returns:
-        ExamListResponse with list of exams
+        ExamListResponse with list of exams including submission_status
     """
     exams = exam_service.list_exams(user['uid'], subject_id)
     
-    exam_list = [
-        ExamInfo(
-            exam_id=exam.exam_id,
-            title=exam.title,
-            pdf_id=exam.pdf_id,
-            num_questions=exam.num_questions,
-            total_points=exam.total_points,
-            difficulty=exam.difficulty,
-            created_at=exam.created_at,
-            status=exam.status,
-            ai_provider=exam.ai_provider
-        )
-        for exam in exams
-    ]
-    
-    return ExamListResponse(
-        success=True,
-        exams=exam_list,
-        count=len(exam_list)
-    )
+    return {
+        'success': True,
+        'exams': exams,
+        'count': len(exams)
+    }
 
 
 @router.delete("/subjects/{subject_id}/exams/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
