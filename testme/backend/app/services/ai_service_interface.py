@@ -21,11 +21,52 @@ class AIServiceInterface(ABC):
         language: str = "ko"
     ) -> Dict[str, Any]:
         """
-        Generate exam questions from PDF file
+        Generate exam questions from a single PDF file
         
         Args:
             pdf_bytes: PDF file content as bytes
             original_filename: Original filename (for AI upload)
+            num_questions: Number of questions to generate
+            difficulty: Difficulty level (easy, medium, hard)
+            language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
+        
+        Returns:
+            Dict with structure:
+            {
+                'success': bool,
+                'exam': {
+                    'questions': [
+                        {
+                            'id': int,
+                            'question': str,
+                            'type': str,  # multiple_choice, short_answer, essay
+                            'options': List[str] or None,
+                            'points': int
+                        },
+                        ...
+                    ],
+                    'total_points': int,
+                    'estimated_time': int
+                },
+                'model': str,  # Model name used
+                'error': str (if success=False)
+            }
+        """
+        pass
+    
+    @abstractmethod
+    def generate_exam_from_multiple_pdfs(
+        self,
+        pdf_bytes_list: List[tuple[bytes, str]],
+        num_questions: int = 10,
+        difficulty: str = "medium",
+        language: str = "ko"
+    ) -> Dict[str, Any]:
+        """
+        Generate exam questions from multiple PDF files
+        
+        Args:
+            pdf_bytes_list: List of tuples (pdf_bytes, original_filename)
             num_questions: Number of questions to generate
             difficulty: Difficulty level (easy, medium, hard)
             language: Language code (ISO 639-1: ko, en, ja, zh, etc.)

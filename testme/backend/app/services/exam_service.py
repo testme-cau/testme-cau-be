@@ -38,12 +38,12 @@ class ExamService:
         language: str = 'ko'
     ) -> Dict[str, Any]:
         """
-        Generate exam from PDF.
+        Generate exam from one or multiple PDFs.
         
         Args:
             user_id: User ID
             subject_id: Subject ID
-            request: Exam generation request
+            request: Exam generation request (with pdf_ids list)
             ai_service: AI service instance
             language: Language code
             
@@ -53,23 +53,38 @@ class ExamService:
         # Verify subject exists
         subject_data = self.subject_repo.get_by_id_with_ownership(user_id, subject_id)
         
-        # Get PDF and verify ownership
-        pdf_data = self.pdf_service.get_pdf(user_id, subject_id, request.pdf_id)
-        
-        # Download PDF bytes
-        pdf_bytes = self.pdf_service.download_pdf_bytes(user_id, subject_id, request.pdf_id)
+        # Collect PDF bytes and filenames for all requested PDFs
+        pdf_bytes_list = []
+        for pdf_id in request.pdf_ids:
+            # Get PDF and verify ownership
+            pdf_data = self.pdf_service.get_pdf(user_id, subject_id, pdf_id)
+            
+            # Download PDF bytes
+            pdf_bytes = self.pdf_service.download_pdf_bytes(user_id, subject_id, pdf_id)
+            
+            pdf_bytes_list.append((pdf_bytes, pdf_data.original_filename))
         
         # Determine language (subject > user > default)
         final_language = subject_data.get('language_preference', language)
         
-        # Generate exam using AI service
-        generation_result = ai_service.generate_exam_from_pdf(
-            pdf_bytes,
-            pdf_data.original_filename,
-            num_questions=request.num_questions,
-            difficulty=request.difficulty,
-            language=final_language
-        )
+        # Generate exam using appropriate AI service method
+        if len(pdf_bytes_list) == 1:
+            # Single PDF - use original method
+            generation_result = ai_service.generate_exam_from_pdf(
+                pdf_bytes_list[0][0],  # pdf_bytes
+                pdf_bytes_list[0][1],  # original_filename
+                num_questions=request.num_questions,
+                difficulty=request.difficulty,
+                language=final_language
+            )
+        else:
+            # Multiple PDFs - use new method
+            generation_result = ai_service.generate_exam_from_multiple_pdfs(
+                pdf_bytes_list,
+                num_questions=request.num_questions,
+                difficulty=request.difficulty,
+                language=final_language
+            )
         
         if not generation_result['success']:
             raise HTTPException(
@@ -93,7 +108,8 @@ class ExamService:
         # Save exam to Firestore
         exam_record = {
             'subject_id': subject_id,
-            'pdf_id': request.pdf_id,
+            'pdf_id': request.pdf_ids[0],  # First PDF for backward compatibility
+            'pdf_ids': request.pdf_ids,  # New field: all PDFs
             'user_id': user_id,
             'questions': exam_data['questions'],
             'total_points': exam_data['total_points'],

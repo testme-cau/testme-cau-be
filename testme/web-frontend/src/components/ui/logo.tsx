@@ -23,7 +23,7 @@ export function Logo({
 }: LogoProps) {
   const logoContent = (
     <span className={cn("font-bold", sizeClasses[size], className)}>
-      <span className="text-teal-600">test</span>
+      <span className="text-primary-600">test</span>
       <span className="text-gray-900">.me</span>
     </span>
   );

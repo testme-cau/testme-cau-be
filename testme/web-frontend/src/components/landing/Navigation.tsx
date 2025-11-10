@@ -38,7 +38,7 @@ export function Navigation() {
               <Link href="/">
                 <div className="group cursor-pointer">
             <Logo size="md" />
-            <div className="h-0.5 w-0 bg-gradient-to-r from-emerald-600 to-teal-600 group-hover:w-full transition-all duration-300"></div>
+            <div className="h-0.5 w-0 bg-gradient-to-r from-primary-600 to-secondary-600 group-hover:w-full transition-all duration-300"></div>
           </div>
               </Link>
 
@@ -49,7 +49,7 @@ export function Navigation() {
                     const element = document.getElementById('features');
                     element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-              className="text-gray-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
               특징
                 </button>
@@ -58,7 +58,7 @@ export function Navigation() {
                     const element = document.getElementById('benefits');
                     element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-              className="text-gray-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
               장점
                 </button>
@@ -67,7 +67,7 @@ export function Navigation() {
                     const element = document.getElementById('how-it-works');
                     element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-              className="text-gray-600 hover:text-emerald-600 transition-colors duration-200 font-medium"
+              className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
               사용방법
                 </button>

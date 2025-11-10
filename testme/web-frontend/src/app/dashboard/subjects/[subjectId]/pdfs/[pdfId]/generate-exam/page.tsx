@@ -23,7 +23,7 @@ export default function GenerateExamPage() {
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ExamGenerationRequest>({
-    pdf_id: pdfId,
+    pdf_ids: [pdfId],  // Changed to array
     num_questions: 10,
     difficulty: "medium",
     ai_provider: "gpt",

@@ -332,6 +332,178 @@ class GPTService(AIServiceInterface):
                 'success': False,
                 'error': str(e),
             }
+    
+    def generate_exam_from_multiple_pdfs(
+        self,
+        pdf_bytes_list: List[tuple[bytes, str]],
+        num_questions: int = 10,
+        difficulty: str = "medium",
+        language: str = "ko"
+    ) -> Dict[str, Any]:
+        """
+        Generate exam from multiple PDF files using OpenAI File API.
+        
+        Args:
+            pdf_bytes_list: List of tuples (pdf_bytes, original_filename)
+            num_questions: Number of questions to generate
+            difficulty: Difficulty level (easy, medium, hard)
+            language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
+        
+        Returns:
+            Dict with success status and exam data
+        """
+        try:
+            import io
+            
+            # Upload all PDFs to OpenAI
+            file_ids = []
+            for pdf_bytes, original_filename in pdf_bytes_list:
+                pdf_file = io.BytesIO(pdf_bytes)
+                pdf_file.name = original_filename
+                
+                file_response = self.client.files.create(
+                    file=pdf_file,
+                    purpose='assistants'
+                )
+                file_ids.append(file_response.id)
+                self._log_warn(f"Uploaded PDF to OpenAI: {file_response.id} ({original_filename})")
+            
+            # Get language name
+            from app.utils.language_utils import get_language_name
+            lang_name = get_language_name(language)
+            
+            # Create assistant for exam generation with improved instructions
+            instructions = (
+                "You are an expert university exam creator.\n\n"
+                
+                f"LANGUAGE REQUIREMENT:\n"
+                f"ALL questions, options, and answers MUST be in {lang_name}.\n"
+                f"Generate questions and answers entirely in {lang_name}.\n\n"
+                
+                "QUALITY REQUIREMENTS:\n"
+                "1. Test UNDERSTANDING and APPLICATION, not just memorization\n"
+                "2. Questions must cover different topics from ALL the provided PDFs\n"
+                "3. Distribute questions across all materials\n"
+                "4. Clear, unambiguous wording\n"
+                "5. Professional academic language\n\n"
+                
+                f"TASK: Generate {num_questions} questions at {difficulty} difficulty from ALL PROVIDED MATERIALS.\n\n"
+                
+                "DIFFICULTY LEVELS:\n"
+                "- easy: Direct recall from material\n"
+                "- medium: Apply concepts to new situations\n"
+                "- hard: Analyze, synthesize, evaluate\n\n"
+                
+                "QUESTION DISTRIBUTION:\n"
+                "- Multiple choice: ~40% (exactly 4 options)\n"
+                "- Short answer: ~40% (2-3 sentences expected)\n"
+                "- Essay: ~20% (paragraph-length)\n\n"
+                
+                "IMPORTANT - INCLUDE ANSWERS AND RUBRICS:\n"
+                "For MULTIPLE CHOICE:\n"
+                "  - correct_answer: The correct option text\n"
+                "  - model_answer: Explanation why this is correct\n\n"
+                
+                "For SHORT ANSWER:\n"
+                "  - model_answer: Complete ideal answer (2-3 sentences)\n"
+                "  - keywords: List of essential terms that must appear\n"
+                "  - scoring_rubric: Breakdown by points\n\n"
+                
+                "For ESSAY:\n"
+                "  - model_answer: Comprehensive ideal answer\n"
+                "  - scoring_rubric: Detailed criteria with point allocation\n\n"
+                
+                "Each question must include:\n"
+                "- id: sequential number\n"
+                "- question: the question text\n"
+                "- type: multiple_choice, short_answer, or essay\n"
+                "- options: array of 4 choices for multiple_choice, null otherwise\n"
+                "- points: integer score value\n"
+                "- topic: brief topic this question covers\n"
+                "- correct_answer: for multiple_choice (the correct option text)\n"
+                "- model_answer: complete ideal answer for all types\n"
+                "- keywords: for short_answer (list of key terms)\n"
+                "- scoring_rubric: for short_answer and essay (array of criterion objects)\n\n"
+                
+                "Scoring rubric format:\n"
+                '[{"criterion": "description", "points": number, "example": "optional example"}]\n'
+                "The points in rubric items should sum to the question's total points.\n"
+            )
+            
+            assistant = self.client.beta.assistants.create(
+                name="Multi-PDF Exam Generator",
+                instructions=instructions,
+                model=self.model_candidates[0],  # Use primary model
+                tools=[{"type": "file_search"}],
+                response_format={"type": "json_schema", "json_schema": {"name": "exam_response", "schema": self.exam_schema}}
+            )
+            
+            # Create thread with all files attached
+            attachments = [{"file_id": fid, "tools": [{"type": "file_search"}]} for fid in file_ids]
+            thread = self.client.beta.threads.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Generate {num_questions} exam questions from ALL {len(pdf_bytes_list)} provided lecture PDFs at {difficulty} difficulty level. Make sure to cover topics from all the materials.",
+                        "attachments": attachments
+                    }
+                ]
+            )
+            
+            # Run assistant
+            run = self.client.beta.threads.runs.create_and_poll(
+                thread_id=thread.id,
+                assistant_id=assistant.id,
+            )
+            
+            if run.status == 'completed':
+                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                response_content = messages.data[0].content[0].text.value
+                
+                # Parse JSON from response
+                try:
+                    exam_data = json.loads(response_content)
+                except Exception:
+                    # Try to extract JSON from response
+                    import re
+                    match = re.search(r'\{[\s\S]*\}', response_content)
+                    if match:
+                        exam_data = json.loads(match.group(0))
+                    else:
+                        raise ValueError(f"Could not parse JSON from response: {response_content[:200]}")
+                
+                # Cleanup - delete all uploaded files
+                for file_id in file_ids:
+                    try:
+                        self.client.files.delete(file_id)
+                    except Exception as e:
+                        self._log_warn(f"Failed to delete file {file_id}: {e}")
+                
+                self.client.beta.assistants.delete(assistant.id)
+                
+                return {
+                    'success': True,
+                    'exam': exam_data,
+                    'model': self.model,
+                }
+            else:
+                # Cleanup on failure
+                for file_id in file_ids:
+                    try:
+                        self.client.files.delete(file_id)
+                    except Exception as e:
+                        self._log_warn(f"Failed to delete file {file_id}: {e}")
+                
+                self.client.beta.assistants.delete(assistant.id)
+                
+                raise Exception(f"Assistant run failed with status: {run.status}")
+                
+        except Exception as e:
+            self._log_error(f'GPT multi-PDF exam generation failed: {e}')
+            return {
+                'success': False,
+                'error': str(e),
+            }
 
     def grade_exam_with_pdf(self, pdf_bytes: bytes, original_filename: str, questions: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Dict[str, Any]:
         """

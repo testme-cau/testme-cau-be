@@ -80,7 +80,8 @@ export interface Question {
 export interface Exam {
   exam_id: string;
   subject_id: string;
-  pdf_id: string;
+  pdf_id: string;  // Keep for backward compatibility
+  pdf_ids?: string[];  // New field: multiple PDFs
   user_id: string;
   questions: Question[];
   total_points: number;
@@ -93,7 +94,7 @@ export interface Exam {
 }
 
 export interface ExamGenerationRequest {
-  pdf_id: string;
+  pdf_ids: string[];  // Changed from pdf_id to pdf_ids
   num_questions: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   ai_provider?: 'gpt' | 'gemini';
