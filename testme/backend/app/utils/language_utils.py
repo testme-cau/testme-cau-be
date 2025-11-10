@@ -133,6 +133,8 @@ def get_language_name(code: str) -> str:
     Returns:
         English name of the language, or "English" if code not found
     """
+    if code is None:
+        return "English"
     return LANGUAGE_NAMES.get(code.lower(), "English")
 
 
@@ -146,6 +148,8 @@ def is_valid_language_code(code: str) -> bool:
     Returns:
         True if code is supported, False otherwise
     """
+    if code is None:
+        return False
     return code.lower() in VALID_LANGUAGE_CODES
 
 
