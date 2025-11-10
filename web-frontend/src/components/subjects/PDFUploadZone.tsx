@@ -4,11 +4,11 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
 
 interface PDFUploadZoneProps {
-  onFileSelect: (file: File) => void;
+  onFileUpload: (file: File) => void;
   uploading: boolean;
 }
 
-export function PDFUploadZone({ onFileSelect, uploading }: PDFUploadZoneProps) {
+export function PDFUploadZone({ onFileUpload, uploading }: PDFUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragEnter = (e: React.DragEvent) => {
@@ -35,14 +35,14 @@ export function PDFUploadZone({ onFileSelect, uploading }: PDFUploadZoneProps) {
 
     const files = e.dataTransfer.files;
     if (files && files[0]) {
-      onFileSelect(files[0]);
+      onFileUpload(files[0]);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      onFileSelect(file);
+      onFileUpload(file);
       e.target.value = "";
     }
   };
