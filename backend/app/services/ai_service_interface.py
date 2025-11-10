@@ -2,7 +2,7 @@
 AI Service Interface - Abstract base class for AI providers
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 
 class AIServiceInterface(ABC):
@@ -18,7 +18,8 @@ class AIServiceInterface(ABC):
         original_filename: str,
         num_questions: int = 10,
         difficulty: str = "medium",
-        language: str = "ko"
+        language: str = "ko",
+        previous_context: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate exam questions from a single PDF file
@@ -29,6 +30,8 @@ class AIServiceInterface(ABC):
             num_questions: Number of questions to generate
             difficulty: Difficulty level (easy, medium, hard)
             language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
+            previous_context: Optional list of previous submissions for this PDF
+                Format: [{'question': str, 'answer': str, 'score': float, 'max_points': int, 'feedback': str}, ...]
         
         Returns:
             Dict with structure:
@@ -60,7 +63,8 @@ class AIServiceInterface(ABC):
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
         difficulty: str = "medium",
-        language: str = "ko"
+        language: str = "ko",
+        previous_context: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate exam questions from multiple PDF files
@@ -70,6 +74,8 @@ class AIServiceInterface(ABC):
             num_questions: Number of questions to generate
             difficulty: Difficulty level (easy, medium, hard)
             language: Language code (ISO 639-1: ko, en, ja, zh, etc.)
+            previous_context: Optional list of previous submissions for these PDFs
+                Format: [{'question': str, 'answer': str, 'score': float, 'max_points': int, 'feedback': str}, ...]
         
         Returns:
             Dict with structure:

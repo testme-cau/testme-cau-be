@@ -34,6 +34,7 @@ class GeminiService(AIServiceInterface):
         self.exam_schema = {
             "type": "object",
             "properties": {
+                "title": {"type": "string", "description": "Brief descriptive title summarizing main topics covered (max 50 chars)"},
                 "questions": {
                     "type": "array",
                     "items": {
@@ -67,7 +68,7 @@ class GeminiService(AIServiceInterface):
                 "total_points": {"type": "integer"},
                 "estimated_time": {"type": "integer"}
             },
-            "required": ["questions", "total_points", "estimated_time"]
+            "required": ["title", "questions", "total_points", "estimated_time"]
         }
     
     @property
@@ -81,7 +82,8 @@ class GeminiService(AIServiceInterface):
         original_filename: str,
         num_questions: int = 10,
         difficulty: str = "medium",
-        language: str = "ko"
+        language: str = "ko",
+        previous_context: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate exam questions from PDF file using Gemini
@@ -122,6 +124,11 @@ class GeminiService(AIServiceInterface):
                 "4. Professional academic language\n\n"
                 
                 f"TASK: Generate {num_questions} questions at {difficulty} difficulty.\n\n"
+                
+                "TITLE GENERATION:\n"
+                "Create a concise, descriptive title that summarizes the main topics/subjects covered in the PDF.\n"
+                f"Title should be clear, specific, and in {lang_name} (max 50 characters).\n"
+                "Example: 'Kotlin 기초 및 Android 컴포넌트'\n\n"
                 
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
@@ -165,6 +172,26 @@ class GeminiService(AIServiceInterface):
                 
                 "Generate the exam questions now based on the PDF content."
             )
+            
+            # Add previous context if available
+            if previous_context and len(previous_context) > 0:
+                prompt += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
+                prompt += "The student has taken this exam before. Here are their previous attempts:\n\n"
+                
+                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                    score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
+                    prompt += f"{i}. Q: {ctx['question'][:100]}...\n"
+                    prompt += f"   Topic: {ctx.get('topic', 'N/A')}\n"
+                    prompt += f"   Student Answer: {ctx['answer'][:80]}...\n"
+                    prompt += f"   Score: {ctx['score']}/{ctx['max_points']} ({score_pct:.0f}%)\n\n"
+                
+                prompt += (
+                    "NEW EXAM STRATEGY:\n"
+                    "- AVOID generating similar questions to those scored >80% (student mastered)\n"
+                    "- FOCUS more on topics where student scored <60% (weak areas)\n"
+                    "- Ensure broad coverage across ALL sections of the PDF\n"
+                    "- Create NEW questions, not just rephrasing old ones\n"
+                )
             
             # Generate exam with JSON mode
             generation_config = genai.GenerationConfig(
@@ -218,7 +245,8 @@ class GeminiService(AIServiceInterface):
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
         difficulty: str = "medium",
-        language: str = "ko"
+        language: str = "ko",
+        previous_context: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate exam questions from multiple PDF files using Gemini
@@ -262,6 +290,11 @@ class GeminiService(AIServiceInterface):
                 
                 f"TASK: Generate {num_questions} questions at {difficulty} difficulty from ALL {len(pdf_bytes_list)} PROVIDED PDFS.\n\n"
                 
+                "TITLE GENERATION:\n"
+                f"Create a comprehensive title that synthesizes the main topics from ALL {len(pdf_bytes_list)} PDFs.\n"
+                f"Title should reflect the combined scope of all materials and be in {lang_name} (max 50 characters).\n"
+                "Example: 'Kotlin 기초 및 Android Grammar 종합'\n\n"
+                
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
                 "- medium: Apply concepts to new situations\n"
@@ -304,6 +337,26 @@ class GeminiService(AIServiceInterface):
                 
                 "Generate the exam questions now based on ALL the PDF contents. Make sure to cover topics from all materials."
             )
+            
+            # Add previous context if available
+            if previous_context and len(previous_context) > 0:
+                prompt += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
+                prompt += "The student has taken this exam before. Here are their previous attempts:\n\n"
+                
+                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                    score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
+                    prompt += f"{i}. Q: {ctx['question'][:100]}...\n"
+                    prompt += f"   Topic: {ctx.get('topic', 'N/A')}\n"
+                    prompt += f"   Student Answer: {ctx['answer'][:80]}...\n"
+                    prompt += f"   Score: {ctx['score']}/{ctx['max_points']} ({score_pct:.0f}%)\n\n"
+                
+                prompt += (
+                    "NEW EXAM STRATEGY:\n"
+                    "- AVOID generating similar questions to those scored >80% (student mastered)\n"
+                    "- FOCUS more on topics where student scored <60% (weak areas)\n"
+                    "- Ensure broad coverage across ALL sections of the PDFs\n"
+                    "- Create NEW questions, not just rephrasing old ones\n"
+                )
             
             # Generate exam with JSON mode
             generation_config = genai.GenerationConfig(
@@ -386,8 +439,19 @@ class GeminiService(AIServiceInterface):
             
             # Prepare grading prompt
             grading_text = """
-You are an expert exam grader. Grade the following exam answers based on the lecture PDF content.
-Be objective and provide constructive feedback.
+You are an expert exam grader and learning advisor.
+
+GRADING TASK:
+1. Grade each answer based on the lecture PDF content
+2. Be objective and provide constructive feedback
+3. Provide an overall assessment of student performance
+
+OVERALL ASSESSMENT:
+After grading all questions, provide:
+- overall_feedback: 2-3 sentences summarizing performance
+- strengths: 2-3 specific achievements (what student did well)
+- weaknesses: 2-3 areas needing improvement (specific topics)
+- study_recommendations: 2-3 actionable study suggestions
 
 Return ONLY valid JSON with this structure (no markdown, no code blocks):
 {
@@ -402,7 +466,11 @@ Return ONLY valid JSON with this structure (no markdown, no code blocks):
     ],
     "total_score": 85.5,
     "max_score": 100,
-    "percentage": 85.5
+    "percentage": 85.5,
+    "overall_feedback": "You demonstrated solid understanding...",
+    "strengths": ["Clear explanation of X", "Good use of examples"],
+    "weaknesses": ["Weak understanding of Y", "Missing key concepts in Z"],
+    "study_recommendations": ["Review chapter 3", "Practice more problems on Y"]
 }
 
 Here are the questions and answers to grade:

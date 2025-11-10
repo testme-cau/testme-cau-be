@@ -233,6 +233,7 @@ class ExamResponse(BaseModel):
 class ExamInfo(BaseModel):
     """Exam information for list responses"""
     exam_id: str
+    title: Optional[str] = None  # AI-generated exam title
     pdf_id: Optional[str]
     num_questions: int
     total_points: int

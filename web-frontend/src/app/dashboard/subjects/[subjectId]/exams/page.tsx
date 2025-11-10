@@ -139,7 +139,7 @@ export default function ExamsListPage() {
                       <div className="mb-4 flex items-start justify-between">
                         <div>
                           <h3 className="text-lg font-semibold group-hover:text-primary">
-                            시험 #{exam.exam_id.slice(-6)}
+                            {exam.title || `시험 #${exam.exam_id.slice(-6)}`}
                           </h3>
                           <p className="mt-1 text-sm text-gray-500">
                             {new Date(exam.created_at).toLocaleDateString()} 생성

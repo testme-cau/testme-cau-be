@@ -100,6 +100,7 @@ class Exam(BaseModel):
     """Exam model - supports multiple PDFs"""
     exam_id: str
     subject_id: str
+    title: Optional[str] = None  # AI-generated exam title
     pdf_id: str  # Keep for backward compatibility (first PDF ID)
     pdf_ids: Optional[List[str]] = None  # New field for multiple PDFs
     user_id: str
@@ -135,6 +136,12 @@ class GradingResult(BaseModel):
     percentage: float
     question_results: List[QuestionResult]
     ai_provider: Optional[str] = None
+    
+    # Overall assessment
+    overall_feedback: Optional[str] = None  # 전체 총평 (2-3 sentences)
+    strengths: Optional[List[str]] = None   # 잘한 점 (2-3 items)
+    weaknesses: Optional[List[str]] = None  # 약점 (2-3 items)
+    study_recommendations: Optional[List[str]] = None  # 학습 권장사항 (2-3 items)
     
     class Config:
         from_attributes = True

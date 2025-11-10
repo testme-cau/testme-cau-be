@@ -80,6 +80,7 @@ export interface Question {
 export interface Exam {
   exam_id: string;
   subject_id: string;
+  title?: string;  // AI-generated exam title
   pdf_id: string;  // Keep for backward compatibility
   pdf_ids?: string[];  // New field: multiple PDFs
   user_id: string;

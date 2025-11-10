@@ -41,6 +41,10 @@ class GPTService(AIServiceInterface):
         self.exam_schema = {
             "type": "object",
             "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Brief descriptive title summarizing main topics covered (max 50 chars)"
+                },
                 "questions": {
                     "type": "array",
                     "items": {
@@ -74,7 +78,7 @@ class GPTService(AIServiceInterface):
                 "total_points": {"type": "integer"},
                 "estimated_time": {"type": "integer"}
             },
-            "required": ["questions", "total_points", "estimated_time"]
+            "required": ["title", "questions", "total_points", "estimated_time"]
         }
 
     @property
@@ -178,7 +182,7 @@ class GPTService(AIServiceInterface):
         raise last_error  # type: ignore[misc]
 
     # ---------- public methods ----------
-    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium", language: str = "ko") -> Dict[str, Any]:
+    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium", language: str = "ko", previous_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """
         Generate exam from PDF file using OpenAI File API.
         
@@ -226,6 +230,11 @@ class GPTService(AIServiceInterface):
                 
                 f"TASK: Generate {num_questions} questions at {difficulty} difficulty.\n\n"
                 
+                "TITLE GENERATION:\n"
+                "Create a concise, descriptive title that summarizes the main topics/subjects covered in the PDF.\n"
+                f"Title should be clear, specific, and in {lang_name} (max 50 characters).\n"
+                "Example: 'Kotlin 기초 및 Android 컴포넌트'\n\n"
+                
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
                 "- medium: Apply concepts to new situations\n"
@@ -266,6 +275,26 @@ class GPTService(AIServiceInterface):
                 '[{"criterion": "description", "points": number, "example": "optional example"}]\n'
                 "The points in rubric items should sum to the question's total points.\n"
             )
+            
+            # Add previous context if available
+            if previous_context and len(previous_context) > 0:
+                instructions += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
+                instructions += "The student has taken this exam before. Here are their previous attempts:\n\n"
+                
+                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                    score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
+                    instructions += f"{i}. Q: {ctx['question'][:100]}...\n"
+                    instructions += f"   Topic: {ctx.get('topic', 'N/A')}\n"
+                    instructions += f"   Student Answer: {ctx['answer'][:80]}...\n"
+                    instructions += f"   Score: {ctx['score']}/{ctx['max_points']} ({score_pct:.0f}%)\n\n"
+                
+                instructions += (
+                    "NEW EXAM STRATEGY:\n"
+                    "- AVOID generating similar questions to those scored >80% (student mastered)\n"
+                    "- FOCUS more on topics where student scored <60% (weak areas)\n"
+                    "- Ensure broad coverage across ALL sections of the PDF\n"
+                    "- Create NEW questions, not just rephrasing old ones\n"
+                )
             
             assistant = self.client.beta.assistants.create(
                 name="Exam Generator",
@@ -338,7 +367,8 @@ class GPTService(AIServiceInterface):
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
         difficulty: str = "medium",
-        language: str = "ko"
+        language: str = "ko",
+        previous_context: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Generate exam from multiple PDF files using OpenAI File API.
@@ -389,6 +419,11 @@ class GPTService(AIServiceInterface):
                 
                 f"TASK: Generate {num_questions} questions at {difficulty} difficulty from ALL PROVIDED MATERIALS.\n\n"
                 
+                "TITLE GENERATION:\n"
+                f"Create a comprehensive title that synthesizes the main topics from ALL {len(pdf_bytes_list)} PDFs.\n"
+                f"Title should reflect the combined scope of all materials and be in {lang_name} (max 50 characters).\n"
+                "Example: 'Kotlin 기초 및 Android Grammar 종합'\n\n"
+                
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
                 "- medium: Apply concepts to new situations\n"
@@ -429,6 +464,26 @@ class GPTService(AIServiceInterface):
                 '[{"criterion": "description", "points": number, "example": "optional example"}]\n'
                 "The points in rubric items should sum to the question's total points.\n"
             )
+            
+            # Add previous context if available
+            if previous_context and len(previous_context) > 0:
+                instructions += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
+                instructions += "The student has taken this exam before. Here are their previous attempts:\n\n"
+                
+                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                    score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
+                    instructions += f"{i}. Q: {ctx['question'][:100]}...\n"
+                    instructions += f"   Topic: {ctx.get('topic', 'N/A')}\n"
+                    instructions += f"   Student Answer: {ctx['answer'][:80]}...\n"
+                    instructions += f"   Score: {ctx['score']}/{ctx['max_points']} ({score_pct:.0f}%)\n\n"
+                
+                instructions += (
+                    "NEW EXAM STRATEGY:\n"
+                    "- AVOID generating similar questions to those scored >80% (student mastered)\n"
+                    "- FOCUS more on topics where student scored <60% (weak areas)\n"
+                    "- Ensure broad coverage across ALL sections of the PDFs\n"
+                    "- Create NEW questions, not just rephrasing old ones\n"
+                )
             
             assistant = self.client.beta.assistants.create(
                 name="Multi-PDF Exam Generator",
@@ -536,12 +591,34 @@ class GPTService(AIServiceInterface):
             assistant = self.client.beta.assistants.create(
                 name="Exam Grader",
                 instructions=(
-                    "You are an expert exam grader. "
-                    "Grade student answers based on the lecture PDF content. "
-                    "Be objective and provide constructive feedback. "
-                    "Return ONLY valid JSON with this structure: "
-                    '{"question_results": [{"question_id": 1, "score": 0-100, "feedback": "...", "is_correct": true/false}], '
-                    '"total_score": 85.5, "max_score": 100, "percentage": 85.5}'
+                    "You are an expert exam grader and learning advisor.\n\n"
+                    
+                    "GRADING TASK:\n"
+                    "1. Grade each answer based on the lecture PDF content\n"
+                    "2. Be objective and provide constructive feedback\n"
+                    "3. Provide an overall assessment of student performance\n\n"
+                    
+                    "OVERALL ASSESSMENT:\n"
+                    "After grading all questions, provide:\n"
+                    "- overall_feedback: 2-3 sentences summarizing performance\n"
+                    "- strengths: 2-3 specific achievements (what student did well)\n"
+                    "- weaknesses: 2-3 areas needing improvement (specific topics)\n"
+                    "- study_recommendations: 2-3 actionable study suggestions\n\n"
+                    
+                    "Return ONLY valid JSON with this structure:\n"
+                    "{\n"
+                    '  "question_results": [\n'
+                    '    {"question_id": 1, "score": 8.5, "max_points": 10, "feedback": "...", "is_correct": true},\n'
+                    '    ...\n'
+                    '  ],\n'
+                    '  "total_score": 85.5,\n'
+                    '  "max_score": 100,\n'
+                    '  "percentage": 85.5,\n'
+                    '  "overall_feedback": "You demonstrated solid understanding...",\n'
+                    '  "strengths": ["Clear explanation of X", "Good use of examples"],\n'
+                    '  "weaknesses": ["Weak understanding of Y", "Missing key concepts in Z"],\n'
+                    '  "study_recommendations": ["Review chapter 3", "Practice more problems on Y"]\n'
+                    "}"
                 ),
                 model=self.model_candidates[0],
                 tools=[{"type": "file_search"}],

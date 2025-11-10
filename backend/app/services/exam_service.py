@@ -67,6 +67,48 @@ class ExamService:
         # Determine language (subject > user > default)
         final_language = subject_data.get('language_preference', language)
         
+        # Check for previous submissions with same PDFs (for context)
+        previous_context = None
+        from app.repositories.submission import SubmissionRepository
+        submission_repo = SubmissionRepository()
+        
+        try:
+            recent_submissions = submission_repo.get_recent_submissions_for_pdfs(
+                user_id, subject_id, request.pdf_ids, limit=3
+            )
+            
+            if recent_submissions:
+                # Build context from previous submissions
+                previous_context = []
+                for submission in recent_submissions:
+                    exam_questions = submission.get('exam_data', {}).get('questions', [])
+                    grading_result = submission.get('grading_result', {})
+                    question_results = grading_result.get('question_results', [])
+                    answers = submission.get('answers', [])
+                    
+                    # Match questions with answers and results
+                    for question in exam_questions:
+                        q_id = question.get('id')
+                        
+                        # Find corresponding answer and result
+                        answer_obj = next((a for a in answers if a.get('question_id') == q_id), None)
+                        result_obj = next((r for r in question_results if r.get('question_id') == q_id), None)
+                        
+                        if answer_obj and result_obj:
+                            previous_context.append({
+                                'question': question.get('question', ''),
+                                'topic': question.get('topic', ''),
+                                'answer': answer_obj.get('answer', ''),
+                                'score': result_obj.get('score', 0),
+                                'max_points': result_obj.get('max_points', question.get('points', 0)),
+                                'feedback': result_obj.get('feedback', '')
+                            })
+                
+                logger.info(f"Found {len(previous_context)} previous question attempts for context")
+        except Exception as e:
+            logger.warning(f"Failed to fetch previous context: {e}")
+            previous_context = None
+        
         # Generate exam using appropriate AI service method
         if len(pdf_bytes_list) == 1:
             # Single PDF - use original method
@@ -75,7 +117,8 @@ class ExamService:
                 pdf_bytes_list[0][1],  # original_filename
                 num_questions=request.num_questions,
                 difficulty=request.difficulty,
-                language=final_language
+                language=final_language,
+                previous_context=previous_context
             )
         else:
             # Multiple PDFs - use new method
@@ -83,7 +126,8 @@ class ExamService:
                 pdf_bytes_list,
                 num_questions=request.num_questions,
                 difficulty=request.difficulty,
-                language=final_language
+                language=final_language,
+                previous_context=previous_context
             )
         
         if not generation_result['success']:
@@ -108,6 +152,7 @@ class ExamService:
         # Save exam to Firestore
         exam_record = {
             'subject_id': subject_id,
+            'title': exam_data.get('title', 'Untitled Exam'),  # AI-generated title with fallback
             'pdf_id': request.pdf_ids[0],  # First PDF for backward compatibility
             'pdf_ids': request.pdf_ids,  # New field: all PDFs
             'user_id': user_id,

@@ -169,7 +169,7 @@ export default function ExamPage() {
             </Link>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold">시험</h1>
+                <h1 className="text-3xl font-bold">{exam.title || '시험'}</h1>
                 <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
                   <span>{exam.num_questions}문제</span>
                   <span>•</span>
