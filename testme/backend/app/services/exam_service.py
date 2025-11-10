@@ -51,7 +51,7 @@ class ExamService:
             Generated exam data
         """
         # Verify subject exists
-        subject_data = self.subject_repo.get_by_id_with_ownership(user_id, subject_id)
+        subject_data = self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
         
         # Collect PDF bytes and filenames for all requested PDFs
         pdf_bytes_list = []
