@@ -128,6 +128,15 @@ export interface GradingResult {
   ai_provider?: string;
 }
 
+export interface SubmissionResult {
+  submission_id: string;
+  status: 'pending' | 'grading' | 'graded' | 'failed';
+  grading_result?: GradingResult;
+  error_message?: string;
+  submitted_at: string;
+  graded_at?: string;
+}
+
 // API Response Types
 export interface APIResponse<T> {
   success: boolean;
