@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { generateExam } from "@/lib/api/exams";
+import { generateExam, getExam } from "@/lib/api/exams";
 import { getPDFs } from "@/lib/api/pdfs";
 import { ExamGenerationRequest, PDF } from "@/types/api";
 import { ArrowLeft, Loader2, FileText, CheckSquare, Square } from "lucide-react";
@@ -30,9 +29,8 @@ export default function GenerateExamPage() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ExamGenerationRequest>({
     pdf_ids: [pdfId],
-    num_questions: 10,
+    num_questions: 5,
     difficulty: "medium",
-    ai_provider: "gpt",
   });
 
   useEffect(() => {
@@ -70,6 +68,37 @@ export default function GenerateExamPage() {
     }
   };
 
+  const pollExamStatus = async (examId: string): Promise<void> => {
+    const maxAttempts = 120; // 최대 2분 (1초마다)
+    let attempts = 0;
+
+    return new Promise((resolve, reject) => {
+      const pollInterval = setInterval(async () => {
+        attempts++;
+
+        try {
+          const exam = await getExam(subjectId, examId);
+          console.log(`Polling attempt ${attempts}: status = ${exam.status}`);
+
+          if (exam.status === "completed") {
+            clearInterval(pollInterval);
+            resolve();
+          } else if (exam.status === "failed") {
+            clearInterval(pollInterval);
+            reject(new Error(exam.error_message || "시험 생성에 실패했습니다."));
+          } else if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            reject(new Error("시험 생성 시간이 초과되었습니다."));
+          }
+        } catch (error: any) {
+          console.error("Polling error:", error);
+          clearInterval(pollInterval);
+          reject(error);
+        }
+      }, 1000); // 1초마다 polling
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -85,19 +114,39 @@ export default function GenerateExamPage() {
     setLoading(true);
 
     try {
+      console.log("Generating exam with data:", {
+        ...formData,
+        pdf_ids: selectedPdfIds,
+      });
+      
+      // 시험 생성 요청 (비동기, 즉시 반환)
       const exam = await generateExam(subjectId, {
         ...formData,
         pdf_ids: selectedPdfIds,
       });
+      
+      console.log("Received placeholder exam:", exam);
+      
+      toast({
+        title: "시험 생성 시작",
+        description: "AI가 시험 문제를 생성하고 있습니다. 잠시만 기다려주세요...",
+      });
+
+      // 시험 상태 polling 시작
+      await pollExamStatus(exam.exam_id);
+      
+      // 완료되면 시험 페이지로 이동
       toast({
         title: "시험 생성 완료",
         description: `${selectedPdfIds.length}개 PDF로부터 시험이 생성되었습니다.`,
       });
       router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`);
     } catch (error: any) {
+      console.error("Exam generation error:", error);
+      console.error("Error response:", error.response);
       toast({
         title: "시험 생성 실패",
-        description: error.message,
+        description: error.message || "알 수 없는 오류가 발생했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -173,14 +222,22 @@ export default function GenerateExamPage() {
                 {pdfs.map((pdf) => (
                   <div
                     key={pdf.file_id}
-                    className="flex items-center gap-3 rounded-lg border p-3 hover:bg-gray-50"
+                    className="flex items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() =>
+                      handlePdfToggle(
+                        pdf.file_id,
+                        !selectedPdfIds.includes(pdf.file_id)
+                      )
+                    }
                   >
-                    <Checkbox
-                      checked={selectedPdfIds.includes(pdf.file_id)}
-                      onCheckedChange={(checked) =>
-                        handlePdfToggle(pdf.file_id, checked as boolean)
-                      }
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedPdfIds.includes(pdf.file_id)}
+                        onCheckedChange={(checked) =>
+                          handlePdfToggle(pdf.file_id, checked as boolean)
+                        }
+                      />
+                    </div>
                     <FileText className="h-5 w-5 text-gray-400" />
                     <div className="flex-1">
                       <p className="font-medium">{pdf.original_filename}</p>
@@ -202,87 +259,80 @@ export default function GenerateExamPage() {
           {/* Form */}
           <Card>
             <form onSubmit={handleSubmit} className="space-y-6 p-6">
-              {/* Number of Questions */}
-              <div>
-                <Label htmlFor="num_questions">문제 수</Label>
-                <div className="mt-2">
-                  <input
-                    type="range"
-                    id="num_questions"
-                    min="1"
-                    max="50"
-                    value={formData.num_questions}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        num_questions: parseInt(e.target.value),
-                      })
-                    }
-                    className="w-full"
-                    disabled={loading}
-                  />
-                  <div className="mt-2 flex justify-between text-sm text-gray-600">
-                    <span>1문제</span>
-                    <span className="font-semibold text-primary">
-                      {formData.num_questions}문제
-                    </span>
-                    <span>50문제</span>
+              {/* Number of Questions and Difficulty */}
+              <div className="space-y-6">
+                {/* Number of Questions */}
+                <div>
+                  <Label>문제 수</Label>
+                  <div className="mt-2 flex gap-3">
+                    {[5, 10, 20].map((num) => (
+                      <Button
+                        key={num}
+                        type="button"
+                        variant={formData.num_questions === num ? "default" : "outline"}
+                        className={`flex-1 ${
+                          formData.num_questions === num
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setFormData({ ...formData, num_questions: num })
+                        }
+                        disabled={loading}
+                      >
+                        {num}문제
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Difficulty */}
+                <div>
+                  <Label>난이도</Label>
+                  <div className="mt-2 flex gap-3">
+                    {[
+                      { value: "easy", label: "쉬움" },
+                      { value: "medium", label: "보통" },
+                      { value: "hard", label: "어려움" },
+                    ].map((diff) => (
+                      <Button
+                        key={diff.value}
+                        type="button"
+                        variant={
+                          formData.difficulty === diff.value ? "default" : "outline"
+                        }
+                        className={`flex-1 ${
+                          formData.difficulty === diff.value
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            difficulty: diff.value as "easy" | "medium" | "hard",
+                          })
+                        }
+                        disabled={loading}
+                      >
+                        {diff.label}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Difficulty */}
-              <div>
-                <Label htmlFor="difficulty">난이도</Label>
-                <Select
-                  value={formData.difficulty}
-                  onValueChange={(value: "easy" | "medium" | "hard") =>
-                    setFormData({ ...formData, difficulty: value })
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">쉬움</SelectItem>
-                    <SelectItem value="medium">보통</SelectItem>
-                    <SelectItem value="hard">어려움</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* AI Provider */}
-              <div>
-                <Label htmlFor="ai_provider">AI 제공자</Label>
-                <Select
-                  value={formData.ai_provider}
-                  onValueChange={(value: "gpt" | "gemini") =>
-                    setFormData({ ...formData, ai_provider: value })
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt">GPT-5</SelectItem>
-                    <SelectItem value="gemini">Gemini 1.5 Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-sm text-gray-500">
-                  시험 생성에 사용할 AI 모델을 선택하세요
-                </p>
-              </div>
-
               {/* Estimated Time */}
-              <div className="rounded-lg bg-blue-50 p-4">
-                <p className="text-sm text-blue-900">
-                  <strong>예상 소요 시간:</strong>{" "}
-                  {Math.ceil(formData.num_questions * 2)} 분
+              <div className="rounded-lg bg-emerald-50 p-4">
+                <p className="text-sm text-emerald-900">
+                  <strong>⚡ 예상 소요 시간:</strong>{" "}
+                  {formData.num_questions === 5
+                    ? "약 1분"
+                    : formData.num_questions === 10
+                    ? "약 3분"
+                    : "약 5분"}
                 </p>
-                <p className="mt-1 text-xs text-blue-700">
-                  AI가 PDF를 분석하고 문제를 생성하는 데 시간이 걸릴 수 있습니다.
+                <p className="mt-1 text-xs text-emerald-700">
+                  AI가 PDF를 빠르게 분석하고 문제를 생성합니다.
                 </p>
               </div>
 

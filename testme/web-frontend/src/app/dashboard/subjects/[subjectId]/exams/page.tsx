@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { getExams } from "@/lib/api/exams";
+import { getExams, deleteExam } from "@/lib/api/exams";
 import { getSubject } from "@/lib/api/subjects";
 import { Exam, Subject } from "@/types/api";
-import { ArrowLeft, ClipboardList, Clock, Target, Sparkles } from "lucide-react";
+import { ArrowLeft, ClipboardList, Clock, Target, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function ExamsListPage() {
   const params = useParams();
@@ -24,6 +25,9 @@ export default function ExamsListPage() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,6 +75,38 @@ export default function ExamsListPage() {
         return "어려움";
       default:
         return difficulty;
+    }
+  };
+
+  const handleDeleteClick = (exam: Exam, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExamToDelete(exam);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!examToDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteExam(subjectId, examToDelete.exam_id);
+      toast({
+        title: "시험 삭제 완료",
+        description: "시험이 성공적으로 삭제되었습니다.",
+      });
+      // Reload exams list
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: "시험 삭제 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setExamToDelete(null);
     }
   };
 
@@ -127,30 +163,29 @@ export default function ExamsListPage() {
               }
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {exams.map((exam) => (
-                <Link
-                  key={exam.exam_id}
-                  href={`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`}
-                >
-                  <Card className="group cursor-pointer transition-all hover:shadow-lg">
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                {exams.map((exam) => (
+                  <Card key={exam.exam_id} className="group transition-all hover:shadow-lg">
                     <div className="p-6">
                       {/* Header */}
                       <div className="mb-4 flex items-start justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold group-hover:text-primary">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold">
                             {exam.title || `시험 #${exam.exam_id.slice(-6)}`}
                           </h3>
                           <p className="mt-1 text-sm text-gray-500">
                             {new Date(exam.created_at).toLocaleDateString()} 생성
                           </p>
                         </div>
-                        {exam.ai_provider && (
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            {exam.ai_provider.toUpperCase()}
-                          </Badge>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
+                          onClick={(e) => handleDeleteClick(exam, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
 
                       {/* Stats */}
@@ -181,15 +216,30 @@ export default function ExamsListPage() {
 
                       {/* CTA */}
                       <div className="mt-4 border-t pt-4">
-                        <Button className="w-full" size="sm">
-                          시험 보기
-                        </Button>
+                        <Link href={`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`}>
+                          <Button className="w-full" size="sm">
+                            시험 보기
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </Card>
-                </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+
+              {/* Delete Confirmation Dialog */}
+              <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                onConfirm={handleDeleteConfirm}
+                title="시험 삭제"
+                description={`"${examToDelete?.title || "이 시험"}"을(를) 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+                confirmText="삭제"
+                cancelText="취소"
+                variant="destructive"
+                loading={deleting}
+              />
+            </>
           )}
         </div>
       </AppLayout>
