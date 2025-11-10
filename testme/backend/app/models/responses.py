@@ -298,3 +298,14 @@ class GradingResponse(BaseModel):
             }
         }
 
+
+class SubmissionResponse(BaseModel):
+    """답안 제출 응답"""
+    success: bool = True
+    submission_id: str
+    status: str
+    grading_result: Optional[Dict[str, Any]] = None
+    submitted_at: datetime
+    graded_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
