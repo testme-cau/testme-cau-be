@@ -12,9 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { getExam } from "@/lib/api/exams";
-import { Exam, AnswerSubmission } from "@/types/api";
-import { ArrowLeft, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { getExam, submitExam, getSubmission } from "@/lib/api/exams";
+import { Exam, AnswerSubmission, SubmissionResult } from "@/types/api";
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Award, TrendingUp } from "lucide-react";
 
 export default function ExamPage() {
   const params = useParams();
@@ -26,24 +26,81 @@ export default function ExamPage() {
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
+  const [gradingStatus, setGradingStatus] = useState<'idle' | 'submitting' | 'grading' | 'completed' | 'failed'>('idle');
 
   useEffect(() => {
     loadExam();
-    loadSavedAnswers();
   }, [examId]);
 
   useEffect(() => {
-    // Auto-save answers to localStorage
-    if (exam) {
+    // Auto-save answers to localStorage (only if not submitted)
+    if (exam && gradingStatus === 'idle') {
       localStorage.setItem(`exam_${examId}_answers`, JSON.stringify(answers));
     }
-  }, [answers, examId, exam]);
+  }, [answers, examId, exam, gradingStatus]);
+
+  // Poll for grading result if status is 'grading'
+  useEffect(() => {
+    if (gradingStatus === 'grading') {
+      const pollInterval = setInterval(async () => {
+        try {
+          const result = await getSubmission(subjectId, examId);
+          if (result.status === 'graded') {
+            setSubmissionResult(result);
+            setGradingStatus('completed');
+            clearInterval(pollInterval);
+            toast({
+              title: "채점 완료",
+              description: "답안이 성공적으로 채점되었습니다.",
+            });
+          } else if (result.status === 'failed') {
+            setSubmissionResult(result);
+            setGradingStatus('failed');
+            clearInterval(pollInterval);
+            toast({
+              title: "채점 실패",
+              description: result.error_message || "채점 중 오류가 발생했습니다.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Failed to poll grading result:", error);
+        }
+      }, 3000); // Poll every 3 seconds
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [gradingStatus, subjectId, examId]);
 
   const loadExam = async () => {
     try {
       const data = await getExam(subjectId, examId);
       setExam(data);
+      
+      // Check if there's already a submission for this exam
+      try {
+        const submission = await getSubmission(subjectId, examId);
+        
+        // If submission exists, show result based on status
+        if (submission.status === 'graded') {
+          setSubmissionResult(submission);
+          setGradingStatus('completed');
+        } else if (submission.status === 'grading' || submission.status === 'pending') {
+          setSubmissionResult(submission);
+          setGradingStatus('grading');
+        } else if (submission.status === 'failed') {
+          setSubmissionResult(submission);
+          setGradingStatus('failed');
+        }
+      } catch (error: any) {
+        // No submission found or error - this is fine, user hasn't taken the exam yet
+        if (error.response?.status !== 404) {
+          console.warn("Failed to check submission status:", error);
+        }
+        // Load saved answers from localStorage if no submission
+        loadSavedAnswers();
+      }
     } catch (error: any) {
       toast({
         title: "시험 로드 실패",
@@ -73,7 +130,7 @@ export default function ExamPage() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!exam) return;
 
     const unanswered = exam.questions.filter((q) => !answers[q.id]);
@@ -86,14 +143,52 @@ export default function ExamPage() {
       return;
     }
 
-    // For now, just mark as submitted
-    // In the future, this would call submitExam() API
-    setSubmitted(true);
-    localStorage.removeItem(`exam_${examId}_answers`);
-    toast({
-      title: "제출 완료",
-      description: "답안이 성공적으로 제출되었습니다.",
-    });
+    setSubmitting(true);
+    setGradingStatus('submitting');
+
+    try {
+      // Convert answers to the format expected by the API
+      const answersArray = exam.questions.map((q) => ({
+        question_id: q.id,
+        answer: answers[q.id],
+      }));
+
+      // Submit exam
+      const result = await submitExam(subjectId, examId, answersArray);
+      setSubmissionResult(result);
+      localStorage.removeItem(`exam_${examId}_answers`);
+
+      // Check submission status
+      if (result.status === 'graded') {
+        setGradingStatus('completed');
+        toast({
+          title: "채점 완료",
+          description: "답안이 성공적으로 채점되었습니다.",
+        });
+      } else if (result.status === 'grading') {
+        setGradingStatus('grading');
+        toast({
+          title: "제출 완료",
+          description: "채점 중입니다. 잠시만 기다려주세요...",
+        });
+      } else if (result.status === 'failed') {
+        setGradingStatus('failed');
+        toast({
+          title: "채점 실패",
+          description: result.error_message || "채점 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setGradingStatus('failed');
+      toast({
+        title: "제출 실패",
+        description: error.message || "답안 제출 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -123,19 +218,190 @@ export default function ExamPage() {
     );
   }
 
-  if (submitted) {
+  // Show grading status or result if submitted
+  if (gradingStatus === 'grading') {
     return (
       <ProtectedRoute>
         <AppLayout>
           <div className="mx-auto max-w-2xl text-center">
             <Card className="p-12">
-              <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-              <h2 className="mt-4 text-2xl font-bold">제출 완료!</h2>
+              <LoadingSpinner size="lg" />
+              <h2 className="mt-4 text-2xl font-bold">채점 중...</h2>
               <p className="mt-2 text-gray-600">
-                답안이 성공적으로 제출되었습니다.
+                AI가 답안을 채점하고 있습니다. 잠시만 기다려주세요.
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                (채점 기능은 백엔드 API 구현 후 추가됩니다)
+                보통 1-2분 정도 소요됩니다.
+              </p>
+            </Card>
+          </div>
+        </AppLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  if (gradingStatus === 'completed' && submissionResult?.grading_result) {
+    const { grading_result } = submissionResult;
+    
+    // Format dates for display
+    const formatDateTime = (isoString: string) => {
+      const date = new Date(isoString);
+      return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    
+    return (
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="mx-auto max-w-4xl space-y-6">
+            {/* Header */}
+            <div>
+              <Link href={`/dashboard/subjects/${subjectId}/exams`}>
+                <Button variant="ghost" className="mb-4">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  시험 목록으로
+                </Button>
+              </Link>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold">채점 결과</h1>
+                {exam && (
+                  <p className="text-lg text-gray-600">{exam.title || '시험'}</p>
+                )}
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  {submissionResult.submitted_at && (
+                    <span>제출: {formatDateTime(submissionResult.submitted_at)}</span>
+                  )}
+                  {submissionResult.graded_at && (
+                    <>
+                      <span>•</span>
+                      <span>채점: {formatDateTime(submissionResult.graded_at)}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Score Summary */}
+            <Card className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-full bg-emerald-100 p-4">
+                    <Award className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">총점</p>
+                    <p className="text-4xl font-bold text-emerald-600">
+                      {grading_result.total_score} / {grading_result.max_score}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">정답률</p>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                    <p className="text-3xl font-bold text-emerald-600">
+                      {grading_result.percentage.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Question Results */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold">문제별 채점 결과</h2>
+              {grading_result.question_results.map((result, index) => {
+                const question = exam?.questions.find(
+                  (q) => q.id === result.question_id
+                );
+                const myAnswer = answers[result.question_id];
+                const scorePercentage = (result.score / result.max_points) * 100;
+                
+                let scoreColor = "text-red-600";
+                let bgColor = "bg-red-50";
+                let borderColor = "border-red-200";
+                
+                if (scorePercentage === 100) {
+                  scoreColor = "text-green-600";
+                  bgColor = "bg-green-50";
+                  borderColor = "border-green-200";
+                } else if (scorePercentage > 0) {
+                  scoreColor = "text-orange-600";
+                  bgColor = "bg-orange-50";
+                  borderColor = "border-orange-200";
+                }
+
+                return (
+                  <Card key={result.question_id} className={`p-6 border-2 ${borderColor}`}>
+                    <div className="space-y-4">
+                      {/* Question Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline">문제 {index + 1}</Badge>
+                            <Badge className={scoreColor}>
+                              {result.score} / {result.max_points}점
+                            </Badge>
+                          </div>
+                          <p className="mt-3 text-lg font-medium">
+                            {question?.question}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* My Answer */}
+                      <div className={`rounded-lg p-4 ${bgColor}`}>
+                        <Label className="text-sm font-semibold">내 답변</Label>
+                        <p className="mt-2 whitespace-pre-wrap">{myAnswer}</p>
+                      </div>
+
+                      {/* Feedback */}
+                      <div className="rounded-lg bg-blue-50 p-4">
+                        <Label className="text-sm font-semibold text-blue-900">
+                          AI 피드백
+                        </Label>
+                        <p className="mt-2 whitespace-pre-wrap text-blue-900">
+                          {result.feedback}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-center gap-3">
+              <Link href={`/dashboard/subjects/${subjectId}/exams`}>
+                <Button size="lg">시험 목록</Button>
+              </Link>
+              <Link href={`/dashboard/subjects/${subjectId}`}>
+                <Button variant="outline" size="lg">
+                  과목 페이지
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </AppLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  if (gradingStatus === 'failed') {
+    return (
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="mx-auto max-w-2xl text-center">
+            <Card className="p-12">
+              <AlertCircle className="mx-auto h-16 w-16 text-red-500" />
+              <h2 className="mt-4 text-2xl font-bold">채점 실패</h2>
+              <p className="mt-2 text-gray-600">
+                {submissionResult?.error_message || "채점 중 오류가 발생했습니다."}
               </p>
               <div className="mt-6 flex justify-center gap-3">
                 <Link href={`/dashboard/subjects/${subjectId}/exams`}>
