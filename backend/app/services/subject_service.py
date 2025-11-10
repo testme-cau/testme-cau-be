@@ -3,6 +3,8 @@ Subject service for business logic related to subjects
 """
 from typing import List, Optional
 from app.repositories.subject import SubjectRepository
+from app.repositories.pdf import PDFRepository
+from app.repositories.exam import ExamRepository
 from app.models.domain import Subject
 from app.models.requests import SubjectCreateRequest, SubjectUpdateRequest
 
@@ -10,8 +12,15 @@ from app.models.requests import SubjectCreateRequest, SubjectUpdateRequest
 class SubjectService:
     """Service for subject business logic"""
     
-    def __init__(self, subject_repo: Optional[SubjectRepository] = None):
+    def __init__(
+        self, 
+        subject_repo: Optional[SubjectRepository] = None,
+        pdf_repo: Optional[PDFRepository] = None,
+        exam_repo: Optional[ExamRepository] = None
+    ):
         self.repo = subject_repo or SubjectRepository()
+        self.pdf_repo = pdf_repo or PDFRepository()
+        self.exam_repo = exam_repo or ExamRepository()
     
     def create_subject(self, user_id: str, request: SubjectCreateRequest) -> Subject:
         """
@@ -65,7 +74,7 @@ class SubjectService:
             group_id: Optional group ID filter
             
         Returns:
-            List of Subjects
+            List of Subjects with pdf_count and exam_count
         """
         subjects_data = self.repo.get_by_user(user_id, group_id)
         
@@ -73,7 +82,26 @@ class SubjectService:
         if group_id == "none":
             subjects_data = [s for s in self.repo.get_by_user(user_id) if s.get('group_id') is None]
         
-        return [Subject(**data) for data in subjects_data]
+        # Add PDF and Exam counts to each subject
+        subjects = []
+        for data in subjects_data:
+            subject_id = data.get('subject_id')
+            
+            # Count PDFs
+            pdfs = self.pdf_repo.get_by_subject(subject_id, user_id)
+            pdf_count = len(pdfs)
+            
+            # Count Exams
+            exams = self.exam_repo.get_by_subject(subject_id, user_id)
+            exam_count = len(exams)
+            
+            # Add counts to subject data
+            data['pdf_count'] = pdf_count
+            data['exam_count'] = exam_count
+            
+            subjects.append(Subject(**data))
+        
+        return subjects
     
     def update_subject(self, user_id: str, subject_id: str, request: SubjectUpdateRequest) -> Subject:
         """
