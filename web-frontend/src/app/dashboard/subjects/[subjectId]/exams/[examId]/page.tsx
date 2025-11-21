@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
 import { AppLayout } from "@/components/layouts/AppLayout";
@@ -12,12 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { getExam, submitExam, getSubmission } from "@/lib/api/exams";
-import { Exam, AnswerSubmission, SubmissionResult } from "@/types/api";
-import { ArrowLeft, Clock, AlertCircle, CheckCircle, Award, TrendingUp } from "lucide-react";
+import { getExam, submitExam, getSubmission, getGradingJobs } from "@/lib/api/exams";
+import { Exam, SubmissionResult } from "@/types/api";
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Award, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { MathText } from "@/components/ui/math-text";
 
 export default function ExamPage() {
   const params = useParams();
+  const router = useRouter();
   const { toast } = useToast();
   const subjectId = params.subjectId as string;
   const examId = params.examId as string;
@@ -28,6 +30,10 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
   const [gradingStatus, setGradingStatus] = useState<'idle' | 'submitting' | 'grading' | 'completed' | 'failed'>('idle');
+  const [gradingProgress, setGradingProgress] = useState<number | null>(null);
+  const [gradingEstimate, setGradingEstimate] = useState<string | null>(null);
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  const [allQuestionsLoaded, setAllQuestionsLoaded] = useState(false);
 
   useEffect(() => {
     loadExam();
@@ -71,6 +77,46 @@ export default function ExamPage() {
 
       return () => clearInterval(pollInterval);
     }
+  }, [gradingStatus, subjectId, examId, toast]);
+
+  // Fetch grading progress for UX display
+  useEffect(() => {
+    if (gradingStatus !== 'grading') {
+      setGradingProgress(null);
+      setGradingEstimate(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchProgress = async () => {
+      try {
+        const jobs = await getGradingJobs(subjectId);
+        const job = jobs.find((job) => job.exam_id === examId);
+        if (!job || cancelled) return;
+
+        const progress = job.progress_percentage ?? job.progress ?? null;
+        if (progress !== null) {
+          setGradingProgress(Math.max(0, Math.min(100, Math.round(progress))));
+        }
+
+        if (job.estimated_duration_seconds) {
+          const minutes = Math.ceil(job.estimated_duration_seconds / 60);
+          setGradingEstimate(`${minutes}분 내외 예상`);
+        } else {
+          setGradingEstimate(null);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch grading job progress:", error);
+      }
+    };
+
+    fetchProgress();
+    const interval = setInterval(fetchProgress, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [gradingStatus, subjectId, examId]);
 
   const loadExam = async () => {
@@ -82,10 +128,28 @@ export default function ExamPage() {
       try {
         const submission = await getSubmission(subjectId, examId);
         
+        // Restore answers from submission
+        if (submission.answers && Array.isArray(submission.answers)) {
+          const restoredAnswers: Record<number, string> = {};
+          submission.answers.forEach((answer: any) => {
+            restoredAnswers[answer.question_id] = answer.answer;
+          });
+          setAnswers(restoredAnswers);
+        }
+        
         // If submission exists, show result based on status
         if (submission.status === 'graded') {
           setSubmissionResult(submission);
           setGradingStatus('completed');
+          
+          // Expand all questions initially when showing graded results
+          if (submission.grading_result?.question_results) {
+            const allQuestionIds = new Set(
+              submission.grading_result.question_results.map((r: any) => r.question_id)
+            );
+            setExpandedQuestions(allQuestionIds);
+            setAllQuestionsLoaded(true);
+          }
         } else if (submission.status === 'grading' || submission.status === 'pending') {
           setSubmissionResult(submission);
           setGradingStatus('grading');
@@ -153,32 +217,14 @@ export default function ExamPage() {
         answer: answers[q.id],
       }));
 
-      // Submit exam
-      const result = await submitExam(subjectId, examId, answersArray);
-      setSubmissionResult(result);
+      await submitExam(subjectId, examId, answersArray);
+      setGradingStatus('grading');
       localStorage.removeItem(`exam_${examId}_answers`);
-
-      // Check submission status
-      if (result.status === 'graded') {
-        setGradingStatus('completed');
-        toast({
-          title: "채점 완료",
-          description: "답안이 성공적으로 채점되었습니다.",
-        });
-      } else if (result.status === 'grading') {
-        setGradingStatus('grading');
-        toast({
-          title: "제출 완료",
-          description: "채점 중입니다. 잠시만 기다려주세요...",
-        });
-      } else if (result.status === 'failed') {
-        setGradingStatus('failed');
-        toast({
-          title: "채점 실패",
-          description: result.error_message || "채점 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "제출 완료",
+        description: "채점이 백그라운드에서 진행됩니다. 진행 상황은 채점 진행 섹션에서 확인하세요.",
+      });
+      router.push(`/dashboard/subjects/${subjectId}?tab=exams`);
     } catch (error: any) {
       setGradingStatus('failed');
       toast({
@@ -223,17 +269,56 @@ export default function ExamPage() {
     return (
       <ProtectedRoute>
         <AppLayout>
-          <div className="mx-auto max-w-2xl text-center">
-            <Card className="p-12">
-              <LoadingSpinner size="lg" />
-              <h2 className="mt-4 text-2xl font-bold">채점 중...</h2>
-              <p className="mt-2 text-gray-600">
-                AI가 답안을 채점하고 있습니다. 잠시만 기다려주세요.
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                보통 1-2분 정도 소요됩니다.
-              </p>
-            </Card>
+          <div className="mx-auto max-w-3xl space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">시험 채점</p>
+                <h1 className="text-3xl font-bold mt-1">채점 중...</h1>
+              </div>
+              <Link href={`/dashboard/subjects/${subjectId}?tab=exams`}>
+                <Button variant="outline">시험 목록으로 돌아가기</Button>
+              </Link>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white/80 shadow-sm p-6 md:p-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+                <div className="flex items-center md:items-start">
+                  <div className="relative h-14 w-14">
+                    <div className="absolute inset-0 rounded-full border-4 border-emerald-100" />
+                    <div className="absolute inset-0 rounded-full border-4 border-t-emerald-500 animate-spin" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xl font-semibold text-gray-900">
+                    AI가 답안을 채점하고 있어요
+                  </p>
+                  <p className="text-gray-600 leading-relaxed">
+                    보통 1~2분이면 끝나요. 채점이 끝나면 자동으로 결과 페이지로 이동하니, 잠깐 다른 페이지를 둘러봐도 괜찮아요.
+                  </p>
+                  <ul className="text-sm text-gray-500 list-disc ml-5 space-y-1">
+                    <li>문제 수나 난이도에 따라 시간이 조금 더 걸릴 수 있어요.</li>
+                    <li>완료되면 알림과 함께 결과 화면으로 이동합니다.</li>
+                  </ul>
+                  {gradingProgress !== null && (
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span>현재 진행률</span>
+                        <span>{gradingProgress}% 진행 중이에요</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100">
+                        <div
+                          className="h-2 rounded-full bg-blue-500 transition-all"
+                          style={{ width: `${gradingProgress}%` }}
+                        />
+                      </div>
+                      {gradingEstimate && (
+                        <p className="text-xs text-gray-400 mt-2">{gradingEstimate}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </AppLayout>
       </ProtectedRoute>
@@ -313,64 +398,112 @@ export default function ExamPage() {
             </Card>
 
             {/* Question Results */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold">문제별 채점 결과</h2>
+            <div className="space-y-6">
               {grading_result.question_results.map((result, index) => {
                 const question = exam?.questions.find(
                   (q) => q.id === result.question_id
                 );
                 const myAnswer = answers[result.question_id];
                 const scorePercentage = (result.score / result.max_points) * 100;
+                const isExpanded = expandedQuestions.has(result.question_id);
                 
-                let scoreColor = "text-red-600";
-                let bgColor = "bg-red-50";
-                let borderColor = "border-red-200";
-                
+                // Simple color coding based on score
+                let scoreColor = "text-gray-900";
                 if (scorePercentage === 100) {
-                  scoreColor = "text-green-600";
-                  bgColor = "bg-green-50";
-                  borderColor = "border-green-200";
-                } else if (scorePercentage > 0) {
-                  scoreColor = "text-orange-600";
-                  bgColor = "bg-orange-50";
-                  borderColor = "border-orange-200";
+                  scoreColor = "text-emerald-600";
+                } else if (scorePercentage >= 80) {
+                  scoreColor = "text-blue-600";
+                } else if (scorePercentage >= 60) {
+                  scoreColor = "text-amber-600";
+                } else {
+                  scoreColor = "text-rose-600";
                 }
 
+                const toggleExpand = () => {
+                  const newExpanded = new Set(expandedQuestions);
+                  if (isExpanded) {
+                    newExpanded.delete(result.question_id);
+                  } else {
+                    newExpanded.add(result.question_id);
+                  }
+                  setExpandedQuestions(newExpanded);
+                };
+
                 return (
-                  <Card key={result.question_id} className={`p-6 border-2 ${borderColor}`}>
-                    <div className="space-y-4">
-                      {/* Question Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline">문제 {index + 1}</Badge>
-                            <Badge className={scoreColor}>
-                              {result.score} / {result.max_points}점
-                            </Badge>
-                          </div>
-                          <p className="mt-3 text-lg font-medium">
-                            {question?.question}
-                          </p>
-                        </div>
-                      </div>
+                  <div key={result.question_id} className="border-b border-gray-200 pb-6 last:border-0">
+                    {/* Question Header */}
+                    <div className="flex items-baseline justify-between mb-4">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        문제 {index + 1}
+                      </h3>
+                      <span className={`text-lg font-semibold ${scoreColor}`}>
+                        {result.score} / {result.max_points}점
+                      </span>
+                    </div>
 
-                      {/* My Answer */}
-                      <div className={`rounded-lg p-4 ${bgColor}`}>
-                        <Label className="text-sm font-semibold">내 답변</Label>
-                        <p className="mt-2 whitespace-pre-wrap">{myAnswer}</p>
-                      </div>
-
-                      {/* Feedback */}
-                      <div className="rounded-lg bg-blue-50 p-4">
-                        <Label className="text-sm font-semibold text-blue-900">
-                          AI 피드백
-                        </Label>
-                        <p className="mt-2 whitespace-pre-wrap text-blue-900">
-                          {result.feedback}
-                        </p>
+                    {/* Question Text */}
+                    <div className="mb-4">
+                      <div className="text-base text-gray-800 leading-relaxed">
+                        <MathText text={question?.question || ""} />
                       </div>
                     </div>
-                  </Card>
+
+                    {/* My Answer */}
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-gray-600 mb-2">
+                        내 답변
+                      </div>
+                      <div className="pl-4 border-l-2 border-gray-300 text-gray-700">
+                        <MathText text={myAnswer || ""} />
+                      </div>
+                    </div>
+
+                    {/* Expandable Section - Model Answer & Feedback */}
+                    <div className="mt-4">
+                      <button
+                        onClick={toggleExpand}
+                        className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            <span>피드백 접기</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            <span>모범답안 및 피드백 보기</span>
+                          </>
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-4 space-y-4">
+                          {/* Model Answer */}
+                          {result.model_answer && (
+                            <div>
+                              <div className="text-sm font-semibold text-emerald-700 mb-2">
+                                모범답안
+                              </div>
+                              <div className="pl-4 border-l-2 border-emerald-500 text-gray-800">
+                                <MathText text={result.model_answer} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Feedback */}
+                          <div>
+                            <div className="text-sm font-semibold text-blue-700 mb-2">
+                              피드백
+                            </div>
+                            <div className="pl-4 border-l-2 border-blue-500 text-gray-800">
+                              <MathText text={result.feedback} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -479,9 +612,9 @@ export default function ExamPage() {
                         <Badge variant="outline">문제 {index + 1}</Badge>
                         <Badge>{question.points}점</Badge>
                       </div>
-                      <p className="mt-3 text-lg font-medium">
-                        {question.question}
-                      </p>
+                      <div className="mt-3 text-lg font-medium">
+                        <MathText text={question.question} />
+                      </div>
                     </div>
                   </div>
 

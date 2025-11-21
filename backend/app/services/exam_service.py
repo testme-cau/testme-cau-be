@@ -18,6 +18,7 @@ from app.services.ai_service_interface import AIServiceInterface
 from app.models.domain import Exam
 from app.models.requests import ExamGenerationRequest
 from app.utils.exam_validator import validate_exam_response
+from app.utils.exam_utils import compute_pdf_signature, normalize_pdf_ids
 
 from config import settings
 from app.utils.exam_utils import compute_pdf_signature, normalize_pdf_ids
@@ -250,6 +251,7 @@ class ExamService:
             'user_id': user_id,
             'subject_id': subject_id,
             'pdf_ids': request.pdf_ids,
+            'pdf_signature': compute_pdf_signature(request.pdf_ids),
             'num_questions': request.num_questions,
             'difficulty': request.difficulty,
             'ai_provider': ai_provider_name,
@@ -329,6 +331,7 @@ class ExamService:
                 'title': title,
                 'pdf_id': request.pdf_ids[0],
                 'pdf_ids': request.pdf_ids,
+                'pdf_signature': compute_pdf_signature(request.pdf_ids),
                 'user_id': user_id,
                 'questions': exam_data['questions'],
                 'total_points': exam_data['total_points'],
@@ -407,6 +410,60 @@ class ExamService:
     # ----------------------------
     # Grading jobs
     # ----------------------------
+    def _normalize_grading_result(
+        self,
+        exam_data: Dict[str, Any],
+        grading_result: Dict[str, Any],
+        answers: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        questions = exam_data.get('questions', [])
+        question_points_map = {q.get('id'): float(q.get('points', 0)) for q in questions}
+        question_map = {q.get('id'): q for q in questions}
+        answer_map = {a.get('question_id'): (a.get('answer') or "").strip() for a in answers}
+        total_points = sum(question_points_map.values()) or float(grading_result.get('max_score') or 0)
+
+        normalized_results = []
+        total_score = 0.0
+
+        for result in grading_result.get('question_results', []):
+            q_id = result.get('question_id')
+            max_points = question_points_map.get(q_id, float(result.get('max_points', 0)))
+            score = float(result.get('score', 0))
+
+            question = question_map.get(q_id)
+            if question and (question.get('type') == 'multiple_choice'):
+                correct_answer = (question.get('correct_answer') or "").strip()
+                student_answer = answer_map.get(q_id, "")
+                is_correct = result.get('is_correct')
+                if is_correct is True or (
+                    correct_answer and student_answer and correct_answer.lower() == student_answer.lower()
+                ):
+                    score = max_points
+                else:
+                    score = 0.0
+
+            if max_points > 0 and score > max_points:
+                score = max_points
+            total_score += score
+
+            normalized_results.append({
+                **result,
+                'max_points': max_points,
+                'score': score,
+            })
+
+        if total_points <= 0:
+            total_points = float(grading_result.get('max_score') or total_score or 1)
+
+        normalized = {
+            **grading_result,
+            'question_results': normalized_results,
+            'total_score': total_score,
+            'max_score': total_points,
+            'percentage': (total_score / total_points * 100) if total_points else 0.0,
+        }
+        return normalized
+
     def _prepare_grading_job(
         self,
         user_id: str,
@@ -480,7 +537,7 @@ class ExamService:
                     submission_id,
                     {
                         'status': 'graded',
-                        'grading_result': grading_result['result']
+                        'grading_result': self._normalize_grading_result(exam_data, grading_result['result'], answers)
                     }
                 )
                 self.grading_job_repo.update_job(
