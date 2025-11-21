@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     google_model: str = Field(default="gemini-1.5-pro", alias="GOOGLE_MODEL")
     default_ai_provider: str = Field(default="gpt", alias="DEFAULT_AI_PROVIDER")
     
+    # Exam history / personalization
+    exam_history_limit: int = Field(default=30, alias="EXAM_HISTORY_LIMIT")
+    exam_history_per_topic: int = Field(default=3, alias="EXAM_HISTORY_PER_TOPIC")
+    exam_history_per_exam_limit: int = Field(default=5, alias="EXAM_HISTORY_PER_EXAM_LIMIT")
+    exam_history_feedback_max_chars: int = Field(default=200, alias="EXAM_HISTORY_FEEDBACK_MAX_CHARS")
+    exam_history_prompt_limit: int = Field(default=30, alias="EXAM_HISTORY_PROMPT_LIMIT")
+    
     # Admin Authentication
     admin_id: str = Field(default="admin", alias="ADMIN_ID")
     admin_pw: str = Field(default="admin", alias="ADMIN_PW")

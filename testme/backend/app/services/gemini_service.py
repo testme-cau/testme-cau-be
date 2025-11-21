@@ -2,14 +2,17 @@
 Gemini Service for exam generation and grading
 Uses Google Generative AI SDK
 """
-import os
+import io
 import json
 import logging
-import io
-from typing import List, Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 import google.generativeai as genai
 
 from app.services.ai_service_interface import AIServiceInterface
+
+from config import settings
 
 
 class GeminiService(AIServiceInterface):
@@ -75,6 +78,29 @@ class GeminiService(AIServiceInterface):
     def provider_name(self) -> str:
         """Return provider name"""
         return "gemini"
+    
+    def _remove_citations(self, data: Any) -> Any:
+        """
+        Remove citation markers like [4:0†source] from all text fields in the data structure.
+        """
+        import re
+        
+        # Pattern to match citation markers: [number:number†source]
+        citation_pattern = r'\[\d+:\d+†source\]'
+        
+        def clean_text(text: str) -> str:
+            if isinstance(text, str):
+                return re.sub(citation_pattern, '', text).strip()
+            return text
+        
+        if isinstance(data, dict):
+            return {key: self._remove_citations(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self._remove_citations(item) for item in data]
+        elif isinstance(data, str):
+            return clean_text(data)
+        else:
+            return data
     
     def generate_exam_from_pdf(
         self,
@@ -186,7 +212,10 @@ class GeminiService(AIServiceInterface):
                 prompt += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
                 prompt += "The student has taken this exam before. Here are their previous attempts:\n\n"
                 
-                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                context_limit = settings.exam_history_prompt_limit
+                context_slice = previous_context if context_limit <= 0 else previous_context[:context_limit]
+                
+                for i, ctx in enumerate(context_slice, 1):
                     score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
                     prompt += f"{i}. Q: {ctx['question'][:100]}...\n"
                     prompt += f"   Topic: {ctx.get('topic', 'N/A')}\n"
@@ -359,7 +388,10 @@ class GeminiService(AIServiceInterface):
                 prompt += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
                 prompt += "The student has taken this exam before. Here are their previous attempts:\n\n"
                 
-                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                context_limit = settings.exam_history_prompt_limit
+                context_slice = previous_context if context_limit <= 0 else previous_context[:context_limit]
+                
+                for i, ctx in enumerate(context_slice, 1):
                     score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
                     prompt += f"{i}. Q: {ctx['question'][:100]}...\n"
                     prompt += f"   Topic: {ctx.get('topic', 'N/A')}\n"
@@ -459,8 +491,17 @@ You are an expert exam grader and learning advisor.
 
 GRADING TASK:
 1. Grade each answer based on the lecture PDF content
-2. Be objective and provide constructive feedback
-3. Provide an overall assessment of student performance
+2. Provide a model answer (ideal answer) for each question
+3. Be objective and provide constructive feedback
+4. Provide an overall assessment of student performance
+
+MODEL ANSWER REQUIREMENTS:
+- For each question, provide a complete, ideal answer based on the PDF content
+- Model answers should be comprehensive yet concise
+- Include key concepts, terminology, and examples from the lecture material
+- For multiple choice, explain why the correct option is right
+- For math/formula questions, use LaTeX notation wrapped in $ or $$
+  Example: The formula is $E = mc^2$ or display mode: $$\\int_{a}^{b} f(x)dx$$
 
 OVERALL ASSESSMENT:
 After grading all questions, provide:
@@ -476,7 +517,8 @@ Return ONLY valid JSON with this structure (no markdown, no code blocks):
             "question_id": 1,
             "score": 8.5,
             "max_points": 10,
-            "feedback": "Good answer, but could be more detailed",
+            "feedback": "Good explanation, but missing X...",
+            "model_answer": "The ideal answer based on the PDF is...",
             "is_correct": true
         }
     ],
@@ -525,6 +567,9 @@ Here are the questions and answers to grade:
                     result_data = json.loads(match.group(0))
                 else:
                     raise ValueError(f"Could not parse JSON from grading response: {response_text[:200]}")
+            
+            # Remove citation markers from all text fields
+            result_data = self._remove_citations(result_data)
             
             # Delete uploaded file
             genai.delete_file(uploaded_file.name)

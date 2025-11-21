@@ -2,11 +2,16 @@
 Submission repository for Firestore operations
 Path: users/{user_id}/subjects/{subject_id}/exams/{exam_id}/submissions/{submission_id}
 """
-from typing import Optional, Dict, Any
+import logging
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from fastapi import HTTPException, status
 from firebase_admin import firestore
 
+from app.utils.exam_utils import compute_pdf_signature, normalize_pdf_ids
+
+
+logger = logging.getLogger(__name__)
 
 class SubmissionRepository:
     def __init__(self):
@@ -77,14 +82,34 @@ class SubmissionRepository:
         for doc in docs:
             return {**doc.to_dict(), 'submission_id': doc.id}
         return None
+
+    def get_submission_by_id(
+        self,
+        user_id: str,
+        subject_id: str,
+        exam_id: str,
+        submission_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch submission by explicit ID."""
+        ref = (self.db.collection('users').document(user_id)
+               .collection('subjects').document(subject_id)
+               .collection('exams').document(exam_id)
+               .collection('submissions').document(submission_id))
+        doc = ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            data['submission_id'] = doc.id
+            return data
+        return None
     
     def get_recent_submissions_for_pdfs(
         self,
         user_id: str,
         subject_id: str,
-        pdf_ids: list,
-        limit: int = 3
-    ) -> list:
+        pdf_ids: List[str],
+        limit: int = 3,
+        per_exam_limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         같은 PDF 조합으로 생성된 시험의 최근 제출 기록 조회
         
@@ -97,46 +122,63 @@ class SubmissionRepository:
         Returns:
             제출 기록 리스트 (exam 정보 포함)
         """
-        # PDF IDs를 정렬하여 비교용으로 사용
-        sorted_pdf_ids = sorted(pdf_ids)
-        
-        # 모든 시험 조회
-        exams_ref = (self.db.collection('users').document(user_id)
-                    .collection('subjects').document(subject_id)
-                    .collection('exams'))
-        
-        exams = exams_ref.stream()
-        
-        # 같은 PDF 조합을 가진 시험 필터링
-        matching_exam_ids = []
-        exam_data_map = {}
-        
-        for exam_doc in exams:
-            exam_data = exam_doc.to_dict()
-            exam_pdf_ids = exam_data.get('pdf_ids', [exam_data.get('pdf_id')])
-            
-            # PDF IDs 정렬하여 비교
-            if sorted(exam_pdf_ids) == sorted_pdf_ids:
-                matching_exam_ids.append(exam_doc.id)
-                exam_data_map[exam_doc.id] = exam_data
-        
-        # 매칭되는 시험이 없으면 빈 리스트 반환
-        if not matching_exam_ids:
+        if limit <= 0:
             return []
         
-        # 각 시험의 제출 기록 수집
-        submissions_with_exam = []
+        normalized_pdf_ids = normalize_pdf_ids(pdf_ids)
+        sorted_pdf_ids = sorted(normalized_pdf_ids)
+        pdf_signature = compute_pdf_signature(sorted_pdf_ids)
         
-        for exam_id in matching_exam_ids:
+        exams_ref = (self.db.collection('users').document(user_id)
+                     .collection('subjects').document(subject_id)
+                     .collection('exams'))
+        
+        exam_docs: List[Any] = []
+        exam_data_map: Dict[str, Dict[str, Any]] = {}
+        
+        if pdf_signature:
+            try:
+                exam_docs = list(
+                    exams_ref.where('pdf_signature', '==', pdf_signature).stream()
+                )
+                for doc in exam_docs:
+                    exam_data_map[doc.id] = doc.to_dict()
+            except Exception as exc:
+                logger.warning(f"Failed to query exams by pdf_signature: {exc}")
+        
+        # Fallback for older exams without pdf_signature or empty query result
+        if not exam_docs:
+            for exam_doc in exams_ref.stream():
+                exam_data = exam_doc.to_dict()
+                exam_pdf_ids = exam_data.get('pdf_ids')
+                if not exam_pdf_ids and exam_data.get('pdf_id'):
+                    exam_pdf_ids = [exam_data.get('pdf_id')]
+                
+                if sorted(normalize_pdf_ids(exam_pdf_ids or [])) == sorted_pdf_ids:
+                    exam_docs.append(exam_doc)
+                    exam_data_map[exam_doc.id] = exam_data
+        
+        if not exam_docs:
+            return []
+        
+        per_exam_cap = per_exam_limit or limit
+        per_exam_cap = max(1, min(per_exam_cap, limit))
+        submissions_with_exam: List[Dict[str, Any]] = []
+        
+        for exam_doc in exam_docs:
+            exam_id = exam_doc.id
+            exam_data = exam_data_map.get(exam_id) or exam_doc.to_dict()
             submissions_ref = (exams_ref.document(exam_id)
-                             .collection('submissions')
-                             .where('user_id', '==', user_id)
-                             .where('status', '==', 'graded'))
+                               .collection('submissions')
+                               .where('user_id', '==', user_id)
+                               .where('status', '==', 'graded')
+                               .order_by('submitted_at', direction=firestore.Query.DESCENDING)
+                               .limit(per_exam_cap))
             
             for sub_doc in submissions_ref.stream():
                 sub_data = sub_doc.to_dict()
                 sub_data['submission_id'] = sub_doc.id
-                sub_data['exam_data'] = exam_data_map[exam_id]
+                sub_data['exam_data'] = exam_data
                 submissions_with_exam.append(sub_data)
         
         # submitted_at 기준 내림차순 정렬

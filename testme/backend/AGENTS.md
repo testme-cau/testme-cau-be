@@ -115,21 +115,28 @@ be/
 
 ### Environment Variables
 
-| Variable                    | Required | Default                  | Description                                           |
-| --------------------------- | -------- | ------------------------ | ----------------------------------------------------- |
-| `SECRET_KEY`                | Yes      | -                        | FastAPI secret key (use `secrets.token_hex(32)`)      |
-| `FLASK_ENV`                 | No       | `development`            | Environment mode (for compatibility)                  |
-| `HOST`                      | No       | `0.0.0.0`                | Server host                                           |
-| `PORT`                      | No       | `5000`                   | Server port                                           |
-| `MAX_FILE_SIZE`             | No       | `16777216`               | Max upload size in bytes (16MB)                       |
-| `FIREBASE_STORAGE_BUCKET`   | Yes      | -                        | Firebase storage bucket (e.g., `project.appspot.com`) |
-| `FIREBASE_CREDENTIALS_PATH` | No       | `serviceAccountKey.json` | Path to Firebase service account key                  |
-| `OPENAI_API_KEY`            | Yes      | -                        | OpenAI API key                                        |
-| `OPENAI_MODEL`              | No       | `gpt-5`                  | OpenAI model name                                     |
-| `GOOGLE_API_KEY`            | No       | -                        | Google AI API key (for Gemini)                        |
-| `GOOGLE_MODEL`              | No       | `gemini-1.5-pro`         | Gemini model name                                     |
-| `DEFAULT_AI_PROVIDER`       | No       | `gpt`                    | Default AI provider: gpt or gemini                    |
-| `CORS_ORIGINS`              | No       | `*`                      | Comma-separated CORS origins                          |
+| Variable                          | Required | Default                  | Description                                           |
+| --------------------------------- | -------- | ------------------------ | ----------------------------------------------------- |
+| `SECRET_KEY`                      | Yes      | -                        | FastAPI secret key (use `secrets.token_hex(32)`)      |
+| `FLASK_ENV`                       | No       | `development`            | Environment mode (for compatibility)                  |
+| `HOST`                            | No       | `0.0.0.0`                | Server host                                           |
+| `PORT`                            | No       | `5000`                   | Server port                                           |
+| `MAX_FILE_SIZE`                   | No       | `16777216`               | Max upload size in bytes (16MB)                       |
+| `FIREBASE_STORAGE_BUCKET`         | Yes      | -                        | Firebase storage bucket (e.g., `project.appspot.com`) |
+| `FIREBASE_CREDENTIALS_PATH`       | No       | `serviceAccountKey.json` | Path to Firebase service account key                  |
+| `OPENAI_API_KEY`                  | Yes      | -                        | OpenAI API key                                        |
+| `OPENAI_MODEL`                    | No       | `gpt-5`                  | OpenAI model name                                     |
+| `GOOGLE_API_KEY`                  | No       | -                        | Google AI API key (for Gemini)                        |
+| `GOOGLE_MODEL`                    | No       | `gemini-1.5-pro`         | Gemini model name                                     |
+| `DEFAULT_AI_PROVIDER`             | No       | `gpt`                    | Default AI provider: gpt or gemini                    |
+| `CORS_ORIGINS`                    | No       | `*`                      | Comma-separated CORS origins                          |
+| `EXAM_HISTORY_LIMIT`              | No       | `30`                     | Max graded submissions to analyze per PDF set         |
+| `EXAM_HISTORY_PER_TOPIC`          | No       | `3`                      | Max context items to keep per topic                   |
+| `EXAM_HISTORY_PER_EXAM_LIMIT`     | No       | `5`                      | Per-exam submission fetch cap                         |
+| `EXAM_HISTORY_FEEDBACK_MAX_CHARS` | No       | `200`                    | Max feedback length stored in context                 |
+| `EXAM_HISTORY_PROMPT_LIMIT`       | No       | `30`                     | Max context entries passed to AI prompts              |
+
+These knobs let you tune how aggressively the exam generator reuses prior attempts. Increase the limits (up to 30) for more personalization, or lower them if token usage becomes a concern.
 
 ### Firebase Setup
 

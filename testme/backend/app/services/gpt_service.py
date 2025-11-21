@@ -2,13 +2,16 @@
 GPT Service for exam generation and grading
 Uses OpenAI API v1.x+ (new client-based structure)
 """
-import os
 import json
 import logging
-from typing import List, Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 from openai import OpenAI
 
 from app.services.ai_service_interface import AIServiceInterface
+
+from config import settings
 
 
 class GPTService(AIServiceInterface):
@@ -97,6 +100,29 @@ class GPTService(AIServiceInterface):
 
     def _log_error(self, message: str) -> None:
         self.logger.error(message)
+    
+    def _remove_citations(self, data: Any) -> Any:
+        """
+        Remove citation markers like [4:0†source] from all text fields in the data structure.
+        """
+        import re
+        
+        # Pattern to match citation markers: [number:number†source]
+        citation_pattern = r'\[\d+:\d+†source\]'
+        
+        def clean_text(text: str) -> str:
+            if isinstance(text, str):
+                return re.sub(citation_pattern, '', text).strip()
+            return text
+        
+        if isinstance(data, dict):
+            return {key: self._remove_citations(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self._remove_citations(item) for item in data]
+        elif isinstance(data, str):
+            return clean_text(data)
+        else:
+            return data
 
     # ---------- internal chat helper ----------
     def _create_chat_completion(self, *, model: str, messages, temperature: float, max_tokens: int, response_format):
@@ -289,7 +315,10 @@ class GPTService(AIServiceInterface):
                 instructions += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
                 instructions += "The student has taken this exam before. Here are their previous attempts:\n\n"
                 
-                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                context_limit = settings.exam_history_prompt_limit
+                context_slice = previous_context if context_limit <= 0 else previous_context[:context_limit]
+                
+                for i, ctx in enumerate(context_slice, 1):
                     score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
                     instructions += f"{i}. Q: {ctx['question'][:100]}...\n"
                     instructions += f"   Topic: {ctx.get('topic', 'N/A')}\n"
@@ -486,7 +515,10 @@ class GPTService(AIServiceInterface):
                 instructions += "\n\n⚠️ PREVIOUS EXAM HISTORY:\n"
                 instructions += "The student has taken this exam before. Here are their previous attempts:\n\n"
                 
-                for i, ctx in enumerate(previous_context[:15], 1):  # Limit to 15 for token management
+                context_limit = settings.exam_history_prompt_limit
+                context_slice = previous_context if context_limit <= 0 else previous_context[:context_limit]
+                
+                for i, ctx in enumerate(context_slice, 1):
                     score_pct = (ctx['score'] / ctx['max_points'] * 100) if ctx['max_points'] > 0 else 0
                     instructions += f"{i}. Q: {ctx['question'][:100]}...\n"
                     instructions += f"   Topic: {ctx.get('topic', 'N/A')}\n"
@@ -611,8 +643,17 @@ class GPTService(AIServiceInterface):
                     
                     "GRADING TASK:\n"
                     "1. Grade each answer based on the lecture PDF content\n"
-                    "2. Be objective and provide constructive feedback\n"
-                    "3. Provide an overall assessment of student performance\n\n"
+                    "2. Provide a model answer (ideal answer) for each question\n"
+                    "3. Be objective and provide constructive feedback\n"
+                    "4. Provide an overall assessment of student performance\n\n"
+                    
+                    "MODEL ANSWER REQUIREMENTS:\n"
+                    "- For each question, provide a complete, ideal answer based on the PDF content\n"
+                    "- Model answers should be comprehensive yet concise\n"
+                    "- Include key concepts, terminology, and examples from the lecture material\n"
+                    "- For multiple choice, explain why the correct option is right\n"
+                    "- For math/formula questions, use LaTeX notation wrapped in $ or $$\n"
+                    "  Example: The formula is $E = mc^2$ or display mode: $$\\int_{a}^{b} f(x)dx$$\n\n"
                     
                     "OVERALL ASSESSMENT:\n"
                     "After grading all questions, provide:\n"
@@ -624,7 +665,14 @@ class GPTService(AIServiceInterface):
                     "Return ONLY valid JSON with this structure:\n"
                     "{\n"
                     '  "question_results": [\n'
-                    '    {"question_id": 1, "score": 8.5, "max_points": 10, "feedback": "...", "is_correct": true},\n'
+                    '    {\n'
+                    '      "question_id": 1,\n'
+                    '      "score": 8.5,\n'
+                    '      "max_points": 10,\n'
+                    '      "feedback": "Good explanation, but missing X...",\n'
+                    '      "model_answer": "The ideal answer based on the PDF is...",\n'
+                    '      "is_correct": true\n'
+                    '    },\n'
                     '    ...\n'
                     '  ],\n'
                     '  "total_score": 85.5,\n'
@@ -687,6 +735,9 @@ class GPTService(AIServiceInterface):
                         result_data = json.loads(match.group(0))
                     else:
                         raise ValueError(f"Could not parse JSON from grading response: {response_content[:200]}")
+                
+                # Remove citation markers from all text fields
+                result_data = self._remove_citations(result_data)
                 
                 # Cleanup
                 self.client.files.delete(file_id)
