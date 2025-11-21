@@ -1,0 +1,148 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "logout": "Sign out",
+    "pdfCount": "{count} PDFs",
+    "examCount": "{count} exams"
+  },
+  "language": {
+    "changeSuccessTitle": "Language updated",
+    "changeSuccessDescription": "UI and exams will now appear in the selected language.",
+    "loadError": "Unable to load language settings",
+    "changeError": "Failed to update language",
+    "selectedLabel": "{language} selected, click to change",
+    "selectLabel": "Select language"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard"
+  },
+  "groups": {
+    "title": "Groups",
+    "all": "All subjects",
+    "none": "No group",
+    "new": "New group",
+    "loading": "Loading...",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "dashboard": {
+    "headerTitle": "Dashboard",
+    "headerSubtitle": "Pick a subject to upload PDFs and generate exams.",
+    "addSubjectButton": "Add subject",
+    "emptyTitle": "No subjects yet",
+    "emptyDescription": "Create your first subject to get started.",
+    "emptyTitleGroup": "No subjects in this group",
+    "emptyDescriptionGroup": "Select another group or add a new subject.",
+    "emptyAction": "Add subject",
+    "loadFailureTitle": "Failed to load data",
+    "subjectLoadFailureTitle": "Failed to load subjects",
+    "deleteDialogTitle": "Delete subject",
+    "deleteDialogDescription": "Are you sure you want to delete \"{name}\"? All PDFs and exams will also be removed.",
+    "deleteSuccessTitle": "Subject deleted",
+    "deleteSuccessDescription": "\"{name}\" has been removed.",
+    "deleteFailureTitle": "Failed to delete subject",
+    "deleteActionLabel": "Delete subject"
+  },
+  "landing": {
+    "nav": {
+      "signin": "Sign in",
+      "signup": "Get started",
+      "product": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "about": "About"
+    },
+    "hero": {
+      "eyebrow": "AI-powered exam practice",
+      "titlePrimary": "Learn by taking exams,",
+      "titleHighlight": "the most effective study method",
+      "subtitle": "Solve questions based on your lecture notes and review mistakes.{br}Active recall makes knowledge stick.",
+      "betaBadge": "Closed beta in progress: Public launch coming soon.",
+      "cta": "Start now",
+      "usage": "Trusted by <strong>{count}+</strong> learners"
+    },
+    "features": {
+      "title": "Personalized learning powered by AI",
+      "subtitle": "Automate everything from exam creation to grading.",
+      "items": [
+        {
+          "title": "Upload PDFs",
+          "description": "Send us lecture slides or summaries and AI will extract the essential topics."
+        },
+        {
+          "title": "Custom exam generation",
+          "description": "Choose difficulty, question count and language to generate exam sets that match your goals."
+        },
+        {
+          "title": "AI grading & feedback",
+          "description": "Receive instant grading plus explanations and study guidance for every answer."
+        },
+        {
+          "title": "Real-time analytics",
+          "description": "Track performance trends instantly and get smarter exam recommendations."
+        }
+      ]
+    },
+    "benefits": {
+      "title": "Why choose test.me?",
+      "subtitle": "Save time and improve quality with an intelligent workflow",
+      "items": [
+        {
+          "stat": "90%",
+          "label": "Less time",
+          "description": "Reduce manual work by up to 90%."
+        },
+        {
+          "stat": "99%",
+          "label": "Accuracy",
+          "description": "Consistent AI evaluation keeps grading fair."
+        },
+        {
+          "stat": "∞",
+          "label": "Customization",
+          "description": "Create any combination of difficulty, language and question type."
+        },
+        {
+          "stat": "∞",
+          "label": "Scalability",
+          "description": "Generate and manage unlimited exams."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "A simple 3-step learning cycle",
+      "subtitle": "Upload, generate, and grade with zero friction.",
+      "ctaHint": "Start your journey today! 🚀",
+      "steps": [
+        {
+          "title": "Upload resources",
+          "description": "PDFs, notes or summaries are analyzed instantly."
+        },
+        {
+          "title": "Take exams",
+          "description": "Attempt the generated exams as many times as you need."
+        },
+        {
+          "title": "Get AI feedback",
+          "description": "Review immediate grading, explanations and study recommendations."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Start active learning today",
+      "subtitle": "Join the closed beta and experience personalized exams tailored to your material.",
+      "button": "Apply for beta",
+      "footnote": "Free trial included"
+    },
+    "footer": {
+      "description": "The AI-powered platform that makes exam creation effortless.",
+      "rights": "© {year} test.me. All rights reserved.",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "contact": "Contact"
+    }
+  }
+}
+

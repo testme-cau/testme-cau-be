@@ -2,32 +2,23 @@
 
 import { motion } from 'framer-motion';
 import { Upload, Sparkles, CheckCheck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-const steps = [
-  {
-    number: '01',
-    icon: Upload,
-    title: 'PDF 업로드',
-    description: '강의 자료나 교재를 PDF로 업로드하세요. 간단하게 드래그 앤 드롭!',
-    color: 'from-primary-500 to-primary-600',
-  },
-  {
-    number: '02',
-    icon: Sparkles,
-    title: 'AI가 시험 생성',
-    description: 'AI가 PDF를 분석하고, 맞춤형 시험 문제를 자동으로 만들어드려요.',
-    color: 'from-secondary-500 to-secondary-600',
-  },
-  {
-    number: '03',
-    icon: CheckCheck,
-    title: '자동 채점 & 결과 확인',
-    description: '학생 답안을 AI가 채점하고, 상세한 피드백과 함께 결과를 제공해요.',
-    color: 'from-accent-500 to-accent-600',
-  },
+const iconConfigs = [
+  { icon: Upload, color: 'from-primary-500 to-primary-600' },
+  { icon: Sparkles, color: 'from-secondary-500 to-secondary-600' },
+  { icon: CheckCheck, color: 'from-accent-500 to-accent-600' },
 ];
 
+type StepContent = {
+  title: string;
+  description: string;
+};
+
 export function HowItWorks() {
+  const t = useTranslations('landing.howItWorks');
+  const steps = (t.raw('steps') as StepContent[]) || [];
+
   return (
     <section id="how-it-works" className="py-24 bg-white relative overflow-hidden">
       {/* Background decoration */}
@@ -43,10 +34,10 @@ export function HowItWorks() {
           className="text-center mb-20"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            어떻게 작동하나요?
+            {t('title')}
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            단 3단계로 시험 제작부터 채점까지 완성!
+            {t('subtitle')}
           </p>
         </motion.div>
 
@@ -57,7 +48,8 @@ export function HowItWorks() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-8">
             {steps.map((step, index) => {
-              const Icon = step.icon;
+              const { icon: Icon, color } = iconConfigs[index % iconConfigs.length];
+              const number = String(index + 1).padStart(2, '0');
               return (
                 <motion.div
                   key={index}
@@ -70,12 +62,12 @@ export function HowItWorks() {
                   {/* Card */}
                   <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 relative z-10 group">
                     {/* Number badge */}
-                    <div className={`absolute -top-6 -left-6 w-16 h-16 rounded-full bg-gradient-to-br ${step.color} flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      {step.number}
+                    <div className={`absolute -top-6 -left-6 w-16 h-16 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      {number}
                     </div>
 
                     {/* Icon */}
-                    <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${step.color} mb-6 mt-8 group-hover:scale-110 transition-transform duration-300`}>
+                    <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${color} mb-6 mt-8 group-hover:scale-110 transition-transform duration-300`}>
                       <Icon className="w-8 h-8 text-white" />
                     </div>
 
@@ -110,9 +102,7 @@ export function HowItWorks() {
           transition={{ duration: 0.6, delay: 0.8 }}
           className="text-center mt-16"
         >
-          <p className="text-lg text-gray-500">
-            지금 바로 시작해보세요! 🚀
-          </p>
+          <p className="text-lg text-gray-500">{t('ctaHint')}</p>
         </motion.div>
       </div>
     </section>

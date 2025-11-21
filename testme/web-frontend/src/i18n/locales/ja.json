@@ -1,0 +1,148 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "logout": "ログアウト",
+    "pdfCount": "{count}件のPDF",
+    "examCount": "{count}件の試験"
+  },
+  "language": {
+    "changeSuccessTitle": "言語を更新しました",
+    "changeSuccessDescription": "UIと試験が選択した言語で表示されます。",
+    "loadError": "言語設定を読み込めませんでした",
+    "changeError": "言語の更新に失敗しました",
+    "selectedLabel": "{language} を選択中、変更するにはクリック",
+    "selectLabel": "言語を選択"
+  },
+  "sidebar": {
+    "dashboard": "ダッシュボード"
+  },
+  "groups": {
+    "title": "グループ",
+    "all": "すべての科目",
+    "none": "グループなし",
+    "new": "新しいグループ",
+    "loading": "読み込み中...",
+    "edit": "編集",
+    "delete": "削除"
+  },
+  "dashboard": {
+    "headerTitle": "ダッシュボード",
+    "headerSubtitle": "科目を選択してPDFをアップロードし、試験を作成してください。",
+    "addSubjectButton": "科目を追加",
+    "emptyTitle": "科目がありません",
+    "emptyDescription": "最初の科目を追加して始めましょう。",
+    "emptyTitleGroup": "このグループには科目がありません",
+    "emptyDescriptionGroup": "別のグループを選ぶか、新しい科目を追加してください。",
+    "emptyAction": "科目を追加",
+    "loadFailureTitle": "データの読み込みに失敗しました",
+    "subjectLoadFailureTitle": "科目の読み込みに失敗しました",
+    "deleteDialogTitle": "科目を削除",
+    "deleteDialogDescription": "\"{name}\" を本当に削除しますか？この科目のPDFと試験も削除されます。",
+    "deleteSuccessTitle": "科目を削除しました",
+    "deleteSuccessDescription": "\"{name}\" を削除しました。",
+    "deleteFailureTitle": "科目の削除に失敗しました",
+    "deleteActionLabel": "科目を削除"
+  },
+  "landing": {
+    "nav": {
+      "signin": "ログイン",
+      "signup": "始める",
+      "product": "製品",
+      "features": "機能",
+      "pricing": "料金",
+      "about": "概要"
+    },
+    "hero": {
+      "eyebrow": "AIによる試験学習",
+      "titlePrimary": "試験に取り組むことが、",
+      "titleHighlight": "最も効率的な学習法です",
+      "subtitle": "講義資料から試験問題を生成し、間違えた部分を復習して記憶を定着させましょう。{br}アクティブリコールで理解を深めます。",
+      "betaBadge": "現在クローズドベータ中：まもなく公開予定です。",
+      "cta": "今すぐ始める",
+      "usage": "<strong>{count}人+</strong>の学習者が利用中"
+    },
+    "features": {
+      "title": "AIが実現するパーソナライズ学習",
+      "subtitle": "試験作成から採点まで、すべてのプロセスを自動化します。",
+      "items": [
+        {
+          "title": "PDFアップロード",
+          "description": "講義スライドや要約をアップロードすると、AIが重要ポイントを抽出します。"
+        },
+        {
+          "title": "カスタム試験生成",
+          "description": "難易度・問題数・言語を設定して、目標に合った試験セットを生成します。"
+        },
+        {
+          "title": "AI自動採点",
+          "description": "提出した解答を即時採点し、間違えた理由と学習ガイドを提供します。"
+        },
+        {
+          "title": "リアルタイム分析",
+          "description": "結果を即時に確認し、学習パターンを分析して最適な問題を提案します。"
+        }
+      ]
+    },
+    "benefits": {
+      "title": "test.me を選ぶ理由",
+      "subtitle": "時間を節約しながら品質も向上させるスマートな選択",
+      "items": [
+        {
+          "stat": "90%",
+          "label": "時間短縮",
+          "description": "手作業に比べて最大90%の作業時間を削減"
+        },
+        {
+          "stat": "99%",
+          "label": "精度",
+          "description": "AIによる一貫した評価で公平な採点"
+        },
+        {
+          "stat": "∞",
+          "label": "カスタマイズ",
+          "description": "難易度や言語を自由に組み合わせて試験を作成"
+        },
+        {
+          "stat": "∞",
+          "label": "スケーラビリティ",
+          "description": "制限なく試験を生成・管理できます"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "3ステップで完了する学習サイクル",
+      "subtitle": "資料アップロードから採点まで、すべてのプロセスをシンプルに。",
+      "ctaHint": "さあ、学習を始めましょう！🚀",
+      "steps": [
+        {
+          "title": "資料をアップロード",
+          "description": "PDFやノートをアップロードすると即座に解析されます。"
+        },
+        {
+          "title": "試験を受ける",
+          "description": "生成された試験に挑戦し、必要に応じて何度でも受験できます。"
+        },
+        {
+          "title": "AIフィードバック",
+          "description": "採点結果と解説、学習アドバイスを受け取り復習に活用します。"
+        }
+      ]
+    },
+    "cta": {
+      "title": "今すぐ能動的な学習を始めましょう",
+      "subtitle": "クローズドベータに参加し、あなたの資料に合わせた試験を体験してください。",
+      "button": "ベータに申し込む",
+      "footnote": "無料トライアル提供中"
+    },
+    "footer": {
+      "description": "AIが支援するスマートな試験作成プラットフォームです。",
+      "rights": "© {year} test.me. All rights reserved.",
+      "privacy": "プライバシーポリシー",
+      "terms": "利用規約",
+      "contact": "お問い合わせ"
+    }
+  }
+}
+
