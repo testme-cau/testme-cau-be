@@ -81,19 +81,30 @@ export default function NewExamPage() {
     setLoading(true);
 
     try {
-      // 다중 PDF 지원: pdf_ids 배열 사용
       const request: ExamGenerationRequest = {
         pdf_ids: selectedPdfIds,
         num_questions: formData.num_questions,
         difficulty: formData.difficulty,
       };
 
-      const exam = await generateExam(subjectId, request);
+      const job = await generateExam(subjectId, request);
+
+      // Store pending job locally so subject page can show it immediately
+      try {
+        const storageKey = `pendingExamJobs:${subjectId}`;
+        const existingRaw = sessionStorage.getItem(storageKey);
+        const existing: any[] = existingRaw ? JSON.parse(existingRaw) : [];
+        const merged = [job, ...existing].slice(0, 5); // keep most recent few
+        sessionStorage.setItem(storageKey, JSON.stringify(merged));
+      } catch (storageError) {
+        console.warn("Failed to store pending exam job:", storageError);
+      }
+
       toast({
-        title: "시험 생성 완료",
-        description: "AI가 시험을 성공적으로 생성했습니다.",
+        title: "시험 생성이 시작되었습니다",
+        description: "AI가 백그라운드에서 시험을 생성합니다. 잠시 후 목록에서 확인하세요.",
       });
-      router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`);
+      router.push(`/dashboard/subjects/${subjectId}?tab=exams`);
     } catch (error: any) {
       toast({
         title: "시험 생성 실패",

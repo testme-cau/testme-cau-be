@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
 import { AppLayout } from "@/components/layouts/AppLayout";
@@ -14,18 +14,27 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getSubject, updateSubject } from "@/lib/api/subjects";
 import { getPDFs, uploadPDF } from "@/lib/api/pdfs";
-import { getExams, deleteExam } from "@/lib/api/exams";
+import {
+  getExams,
+  deleteExam,
+  getExamJobs,
+  cancelExamJob,
+  getGradingJobs,
+} from "@/lib/api/exams";
 import { groupsApi } from "@/lib/api/groups";
-import { Subject, PDF, Group, Exam } from "@/types/api";
+import { Subject, PDF, Group, Exam, ExamJob, GradingJob } from "@/types/api";
 import { SubjectHeader } from "@/components/subjects/SubjectHeader";
 import { SubjectGroupSelector } from "@/components/subjects/SubjectGroupSelector";
 import { PDFUploadZone } from "@/components/subjects/PDFUploadZone";
 import { PDFList } from "@/components/subjects/PDFList";
 import { ArrowLeft, ClipboardList, Clock, Target, Trash2, FileText, Plus } from "lucide-react";
+import { ExamJobList } from "@/components/subjects/ExamJobList";
+import { GradingJobList } from "@/components/subjects/GradingJobList";
 
 export default function SubjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const subjectId = params.subjectId as string;
 
@@ -33,6 +42,10 @@ export default function SubjectDetailPage() {
   const [subject, setSubject] = useState<Subject | null>(null);
   const [pdfs, setPdfs] = useState<PDF[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [examJobs, setExamJobs] = useState<ExamJob[]>([]);
+  const [examJobsLoading, setExamJobsLoading] = useState(false);
+  const [gradingJobs, setGradingJobs] = useState<GradingJob[]>([]);
+  const [gradingJobsLoading, setGradingJobsLoading] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -42,22 +55,130 @@ export default function SubjectDetailPage() {
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [subjectId]);
+  const prevExamJobCount = useRef(0);
+  const prevGradingJobCount = useRef(0);
 
-  const loadData = async () => {
+  const refreshExams = useCallback(async () => {
+    if (!subjectId) return;
+    const data = await getExams(subjectId);
+    setExams(data || []);
+  }, [subjectId, readLocalExamJobs]);
+
+  const storageKey = `pendingExamJobs:${subjectId}`;
+
+  const readLocalExamJobs = useCallback((): ExamJob[] => {
     try {
-      const [subjectData, pdfsData, examsData, groupsData] = await Promise.all([
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (job) => job && (job.status === "pending" || job.status === "processing")
+      );
+    } catch {
+      return [];
+    }
+  }, [storageKey]);
+
+  const writeLocalExamJobs = useCallback(
+    (jobs: ExamJob[]) => {
+      try {
+        if (!jobs.length) {
+          sessionStorage.removeItem(storageKey);
+          return;
+        }
+        sessionStorage.setItem(storageKey, JSON.stringify(jobs));
+      } catch (error) {
+        console.warn("Failed to persist local exam jobs:", error);
+      }
+    },
+    [storageKey]
+  );
+
+  const fetchExamJobs = useCallback(async () => {
+    if (!subjectId) return;
+    setExamJobsLoading(true);
+    try {
+      const jobs = await getExamJobs(subjectId);
+      const activeJobs =
+        jobs?.filter((job) => job.status === "pending" || job.status === "processing") || [];
+      if (prevExamJobCount.current > 0 && activeJobs.length < prevExamJobCount.current) {
+        try {
+          await refreshExams();
+        } catch (error: any) {
+          toast({
+            title: "시험 목록 갱신 실패",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      }
+      prevExamJobCount.current = activeJobs.length;
+      const localJobs = readLocalExamJobs();
+      const serverIds = new Set(activeJobs.map((job) => job.job_id));
+      const remainingLocal = localJobs.filter((job) => !serverIds.has(job.job_id));
+      if (remainingLocal.length !== localJobs.length) {
+        writeLocalExamJobs(remainingLocal);
+      }
+      setExamJobs([...activeJobs, ...remainingLocal]);
+    } catch (error: any) {
+      toast({
+        title: "생성 작업 로드 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+      const localJobs = readLocalExamJobs();
+      if (localJobs.length) {
+        setExamJobs(localJobs);
+      }
+    } finally {
+      setExamJobsLoading(false);
+    }
+  }, [subjectId, toast, refreshExams, readLocalExamJobs, writeLocalExamJobs]);
+
+  const fetchGradingJobs = useCallback(async () => {
+    if (!subjectId) return;
+    setGradingJobsLoading(true);
+    try {
+      const jobs = await getGradingJobs(subjectId);
+      const activeJobs =
+        jobs?.filter((job) => job.status === "pending" || job.status === "processing") || [];
+      if (prevGradingJobCount.current > 0 && activeJobs.length < prevGradingJobCount.current) {
+        try {
+          await refreshExams();
+        } catch (error: any) {
+          toast({
+            title: "시험 목록 갱신 실패",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      }
+      prevGradingJobCount.current = activeJobs.length;
+      setGradingJobs(activeJobs);
+    } catch (error: any) {
+      toast({
+        title: "채점 작업 로드 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setGradingJobsLoading(false);
+    }
+  }, [subjectId, toast, refreshExams]);
+
+  const loadData = useCallback(async () => {
+    if (!subjectId) return;
+    try {
+      const [subjectData, pdfsData, groupsData] = await Promise.all([
         getSubject(subjectId),
         getPDFs(subjectId),
-        getExams(subjectId),
         groupsApi.getGroups(),
       ]);
       setSubject(subjectData);
       setPdfs(pdfsData || []);
-      setExams(examsData || []);
       setGroups(groupsData || []);
+      await Promise.all([refreshExams(), fetchExamJobs(), fetchGradingJobs()]);
     } catch (error: any) {
       toast({
         title: "데이터 로드 실패",
@@ -67,10 +188,64 @@ export default function SubjectDetailPage() {
       setPdfs([]);
       setExams([]);
       setGroups([]);
+      setExamJobs([]);
+      setGradingJobs([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [subjectId, toast, fetchExamJobs, fetchGradingJobs, refreshExams]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const tabParam = searchParams?.get("tab");
+    if (tabParam === "pdfs" || tabParam === "exams") {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!subjectId) return;
+    fetchExamJobs();
+    fetchGradingJobs();
+  }, [subjectId, fetchExamJobs, fetchGradingJobs]);
+
+  useEffect(() => {
+    prevExamJobCount.current = 0;
+    prevGradingJobCount.current = 0;
+    setExamJobs(readLocalExamJobs());
+  }, [subjectId]);
+
+  const activeExamJobs = useMemo(
+    () => examJobs.filter((job) => job.status === "pending" || job.status === "processing"),
+    [examJobs]
+  );
+
+  useEffect(() => {
+    if (!activeExamJobs.length) return;
+    const interval = setInterval(() => {
+      fetchExamJobs();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeExamJobs.length, fetchExamJobs]);
+
+  const activeGradingJobs = useMemo(
+    () => gradingJobs.filter((job) => job.status === "pending" || job.status === "processing"),
+    [gradingJobs]
+  );
+
+  useEffect(() => {
+    if (!activeGradingJobs.length) return;
+    const interval = setInterval(() => {
+      fetchGradingJobs();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeGradingJobs.length, fetchGradingJobs]);
+
+  const showExamJobSection = examJobsLoading || examJobs.length > 0;
+  const showGradingJobSection = gradingJobsLoading || gradingJobs.length > 0;
 
   const handleGroupChange = async (groupId: string) => {
     if (!subject) return;
@@ -100,6 +275,24 @@ export default function SubjectDetailPage() {
       });
     } finally {
       setUpdatingGroup(false);
+    }
+  };
+
+  const handleCancelExamJob = async (jobId: string) => {
+    if (!subjectId) return;
+    try {
+      await cancelExamJob(subjectId, jobId);
+      toast({
+        title: "작업 취소됨",
+        description: "시험 생성 작업이 취소되었습니다.",
+      });
+      fetchExamJobs();
+    } catch (error: any) {
+      toast({
+        title: "작업 취소 실패",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -384,6 +577,19 @@ export default function SubjectDetailPage() {
                 </Link>
               </div>
               
+              {showExamJobSection && (
+                <ExamJobList
+                  jobs={examJobs}
+                  pdfs={pdfs}
+                  loading={examJobsLoading}
+                  onCancel={handleCancelExamJob}
+                />
+              )}
+
+              {showGradingJobSection && (
+                <GradingJobList jobs={gradingJobs} loading={gradingJobsLoading} />
+              )}
+
               {/* Exams List */}
               {exams.length === 0 ? (
                 <EmptyState
