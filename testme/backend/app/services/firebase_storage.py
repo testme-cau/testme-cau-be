@@ -4,7 +4,6 @@ Firebase Storage service for file management
 import uuid
 from datetime import timedelta
 from firebase_admin import storage
-from werkzeug.utils import secure_filename
 
 
 class FirebaseStorageService:
@@ -67,7 +66,7 @@ class FirebaseStorageService:
             'file_id': file_id,
             'unique_filename': unique_filename,
             'storage_path': storage_path,
-            'original_filename': secure_filename(original_filename)
+            'original_filename': original_filename  # 원본 파일명 그대로 저장 (한글 지원)
         }
     
     def get_download_url(self, storage_path, expiration=timedelta(hours=1)):
