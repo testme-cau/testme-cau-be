@@ -6,6 +6,7 @@ from firebase_admin import credentials
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import logging
 
@@ -90,7 +91,7 @@ def create_app() -> FastAPI:
     from app.routes import pdf as pdf_routes
     from app.routes import exam as exam_routes
     from app.routes import user as user_routes
-    # from app.routes import admin as admin_routes
+    from app.routes import admin as admin_routes
     
     app.include_router(main_routes.router)
     app.include_router(user_routes.router, prefix="/api/user")
@@ -98,7 +99,17 @@ def create_app() -> FastAPI:
     app.include_router(group_routes.router, prefix="/api/groups")
     app.include_router(pdf_routes.router, prefix="/api")
     app.include_router(exam_routes.router, prefix="/api")
-    # app.include_router(admin_routes.router, prefix="/admin", tags=["admin"])
+    app.include_router(admin_routes.router, prefix="/admin", tags=["admin"])
+
+    # Session middleware for admin interface
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.secret_key,
+        session_cookie="testme_admin_session",
+        max_age=60 * 60 * 8,  # 8 hours
+        same_site="lax",
+        https_only=not settings.debug
+    )
     
     return app
 

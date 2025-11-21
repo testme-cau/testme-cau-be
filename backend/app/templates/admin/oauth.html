@@ -190,7 +190,7 @@
         // Fetch Firebase config from backend
         async function initFirebase() {
             try {
-                const response = await fetch('/admin/firebase-config');
+                const response = await fetch('/admin/api/firebase-config');
                 if (!response.ok) {
                     throw new Error('Firebase 설정을 불러올 수 없습니다.');
                 }
@@ -240,7 +240,7 @@
                     // Success! Redirect to dashboard
                     showLoading('로그인 성공! 리다이렉트 중...');
                     setTimeout(() => {
-                        window.location.href = '/admin-page';
+                        window.location.href = '/admin/dashboard';
                     }, 500);
                 } else {
                     showError(data.error || '로그인에 실패했습니다.');
