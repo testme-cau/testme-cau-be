@@ -8,7 +8,6 @@ import { AppLayout } from "@/components/layouts/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { generateExam } from "@/lib/api/exams";
@@ -28,9 +27,8 @@ export default function NewExamPage() {
   const [pdfs, setPdfs] = useState<PDF[]>([]);
   const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    num_questions: 10,
+    num_questions: 5,
     difficulty: "medium" as "easy" | "medium" | "hard",
-    ai_provider: "gpt" as "gpt" | "gemini",
   });
 
   useEffect(() => {
@@ -83,12 +81,11 @@ export default function NewExamPage() {
     setLoading(true);
 
     try {
-      // For now, use the first selected PDF (multi-PDF support coming soon)
+      // 다중 PDF 지원: pdf_ids 배열 사용
       const request: ExamGenerationRequest = {
-        pdf_id: selectedPdfIds[0],
+        pdf_ids: selectedPdfIds,
         num_questions: formData.num_questions,
         difficulty: formData.difficulty,
-        ai_provider: formData.ai_provider,
       };
 
       const exam = await generateExam(subjectId, request);
@@ -138,10 +135,8 @@ export default function NewExamPage() {
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PDF Selection */}
-            <Card className="p-6">
+          {/* PDF Selection */}
+          <Card className="p-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold">PDF 선택</Label>
@@ -213,9 +208,9 @@ export default function NewExamPage() {
                 <p className="text-sm text-gray-500">
                   ✨ <strong>{selectedPdfIds.length}개</strong>의 PDF 선택됨
                   {selectedPdfIds.length > 1 && (
-                    <span className="text-amber-600">
+                    <span className="text-emerald-600">
                       {" "}
-                      (현재는 첫 번째 PDF만 사용됩니다. 다중 PDF 지원 예정)
+                      (여러 PDF의 내용을 종합하여 시험이 생성됩니다)
                     </span>
                   )}
                 </p>
@@ -225,100 +220,88 @@ export default function NewExamPage() {
             {/* Exam Options */}
             <Card className="p-6">
               <div className="space-y-6">
-                <h3 className="text-base font-semibold">시험 옵션</h3>
-
                 {/* Number of Questions */}
                 <div>
-                  <Label htmlFor="num_questions">문제 수</Label>
-                  <div className="mt-2">
-                    <input
-                      type="range"
-                      id="num_questions"
-                      min="1"
-                      max="50"
-                      value={formData.num_questions}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          num_questions: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full"
-                      disabled={loading}
-                    />
-                    <div className="mt-2 flex justify-between text-sm text-gray-600">
-                      <span>1문제</span>
-                      <span className="font-semibold text-emerald-600">
-                        {formData.num_questions}문제
-                      </span>
-                      <span>50문제</span>
-                    </div>
+                  <Label>문제 수</Label>
+                  <div className="mt-2 flex gap-3">
+                    {[5, 10, 20].map((num) => (
+                      <Button
+                        key={num}
+                        type="button"
+                        variant={formData.num_questions === num ? "default" : "outline"}
+                        className={`flex-1 ${
+                          formData.num_questions === num
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setFormData({ ...formData, num_questions: num })
+                        }
+                        disabled={loading}
+                      >
+                        {num}문제
+                      </Button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Difficulty */}
                 <div>
-                  <Label htmlFor="difficulty">난이도</Label>
-                  <Select
-                    value={formData.difficulty}
-                    onValueChange={(value: "easy" | "medium" | "hard") =>
-                      setFormData({ ...formData, difficulty: value })
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="easy">쉬움</SelectItem>
-                      <SelectItem value="medium">보통</SelectItem>
-                      <SelectItem value="hard">어려움</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* AI Provider */}
-                <div>
-                  <Label htmlFor="ai_provider">AI 제공자</Label>
-                  <Select
-                    value={formData.ai_provider}
-                    onValueChange={(value: "gpt" | "gemini") =>
-                      setFormData({ ...formData, ai_provider: value })
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt">GPT-5</SelectItem>
-                      <SelectItem value="gemini">Gemini 1.5 Pro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="mt-1 text-sm text-gray-500">
-                    시험 생성에 사용할 AI 모델을 선택하세요
-                  </p>
+                  <Label>난이도</Label>
+                  <div className="mt-2 flex gap-3">
+                    {[
+                      { value: "easy", label: "쉬움" },
+                      { value: "medium", label: "보통" },
+                      { value: "hard", label: "어려움" },
+                    ].map((diff) => (
+                      <Button
+                        key={diff.value}
+                        type="button"
+                        variant={
+                          formData.difficulty === diff.value ? "default" : "outline"
+                        }
+                        className={`flex-1 ${
+                          formData.difficulty === diff.value
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            difficulty: diff.value as "easy" | "medium" | "hard",
+                          })
+                        }
+                        disabled={loading}
+                      >
+                        {diff.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </Card>
 
             {/* Estimated Time */}
-            <div className="rounded-lg bg-blue-50 p-4">
-              <p className="text-sm text-blue-900">
-                <strong>예상 소요 시간:</strong>{" "}
-                {Math.ceil(formData.num_questions * 2)} 분
+            <div className="rounded-lg bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-900">
+                <strong>⚡ 예상 소요 시간:</strong>{" "}
+                {formData.num_questions === 5
+                  ? "약 1분"
+                  : formData.num_questions === 10
+                  ? "약 3분"
+                  : "약 5분"}
               </p>
-              <p className="mt-1 text-xs text-blue-700">
-                AI가 PDF를 분석하고 문제를 생성하는 데 시간이 걸릴 수 있습니다.
+              <p className="mt-1 text-xs text-emerald-700">
+                AI가 PDF를 빠르게 분석하고 문제를 생성합니다.
               </p>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <form onSubmit={handleSubmit}>
               <Button
                 type="submit"
                 disabled={loading || selectedPdfIds.length === 0}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                className="w-full"
               >
                 {loading ? (
                   <>
@@ -329,8 +312,7 @@ export default function NewExamPage() {
                   "시험 생성"
                 )}
               </Button>
-            </div>
-          </form>
+            </form>
 
           {/* Info */}
           <Card className="p-6">

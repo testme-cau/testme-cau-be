@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { generateExam, getExam } from "@/lib/api/exams";
+import { generateExam } from "@/lib/api/exams";
 import { getPDFs } from "@/lib/api/pdfs";
-import { ExamGenerationRequest, PDF } from "@/types/api";
-import { ArrowLeft, Loader2, FileText, CheckSquare, Square } from "lucide-react";
+import { PDF, ExamGenerationRequest } from "@/types/api";
+import { ArrowLeft, Loader2, FileText } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export default function GenerateExamPage() {
   const params = useParams();
@@ -23,24 +23,33 @@ export default function GenerateExamPage() {
   const subjectId = params.subjectId as string;
   const pdfId = params.pdfId as string;
 
-  const [pdfs, setPdfs] = useState<PDF[]>([]);
-  const [loadingPdfs, setLoadingPdfs] = useState(true);
-  const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([pdfId]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<ExamGenerationRequest>({
-    pdf_ids: [pdfId],
+  const [pdfsLoading, setPdfsLoading] = useState(true);
+  const [pdfs, setPdfs] = useState<PDF[]>([]);
+  const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([]);
+  const [formData, setFormData] = useState({
     num_questions: 5,
-    difficulty: "medium",
+    difficulty: "medium" as "easy" | "medium" | "hard",
   });
 
   useEffect(() => {
-    loadPdfs();
+    loadPDFs();
   }, [subjectId]);
 
-  const loadPdfs = async () => {
+  useEffect(() => {
+    // URL에서 받은 pdfId를 미리 선택
+    if (pdfs.length > 0 && pdfId && selectedPdfIds.length === 0) {
+      const pdfExists = pdfs.some((pdf) => pdf.file_id === pdfId);
+      if (pdfExists) {
+        setSelectedPdfIds([pdfId]);
+      }
+    }
+  }, [pdfs, pdfId]);
+
+  const loadPDFs = async () => {
     try {
-      const data = await getPDFs(subjectId);
-      setPdfs(data || []);
+      const pdfsData = await getPDFs(subjectId);
+      setPdfs(pdfsData);
     } catch (error: any) {
       toast({
         title: "PDF 목록 로드 실패",
@@ -48,55 +57,25 @@ export default function GenerateExamPage() {
         variant: "destructive",
       });
     } finally {
-      setLoadingPdfs(false);
+      setPdfsLoading(false);
     }
   };
 
-  const handlePdfToggle = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedPdfIds((prev) => [...prev, id]);
-    } else {
-      setSelectedPdfIds((prev) => prev.filter((pId) => pId !== id));
-    }
+  const handlePdfToggle = (pdfId: string) => {
+    setSelectedPdfIds((prev) =>
+      prev.includes(pdfId)
+        ? prev.filter((id) => id !== pdfId)
+        : [...prev, pdfId]
+    );
   };
 
   const handleSelectAll = () => {
     if (selectedPdfIds.length === pdfs.length) {
-      setSelectedPdfIds([pdfId]); // Keep at least the initial PDF
+      // 최소 하나는 선택되어야 하므로, URL에서 받은 pdfId만 남김
+      setSelectedPdfIds(pdfId ? [pdfId] : []);
     } else {
       setSelectedPdfIds(pdfs.map((pdf) => pdf.file_id));
     }
-  };
-
-  const pollExamStatus = async (examId: string): Promise<void> => {
-    const maxAttempts = 120; // 최대 2분 (1초마다)
-    let attempts = 0;
-
-    return new Promise((resolve, reject) => {
-      const pollInterval = setInterval(async () => {
-        attempts++;
-
-        try {
-          const exam = await getExam(subjectId, examId);
-          console.log(`Polling attempt ${attempts}: status = ${exam.status}`);
-
-          if (exam.status === "completed") {
-            clearInterval(pollInterval);
-            resolve();
-          } else if (exam.status === "failed") {
-            clearInterval(pollInterval);
-            reject(new Error(exam.error_message || "시험 생성에 실패했습니다."));
-          } else if (attempts >= maxAttempts) {
-            clearInterval(pollInterval);
-            reject(new Error("시험 생성 시간이 초과되었습니다."));
-          }
-        } catch (error: any) {
-          console.error("Polling error:", error);
-          clearInterval(pollInterval);
-          reject(error);
-        }
-      }, 1000); // 1초마다 polling
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,7 +84,7 @@ export default function GenerateExamPage() {
     if (selectedPdfIds.length === 0) {
       toast({
         title: "PDF 선택 필요",
-        description: "시험을 생성하려면 하나 이상의 PDF를 선택해야 합니다.",
+        description: "최소 1개의 PDF를 선택해주세요.",
         variant: "destructive",
       });
       return;
@@ -114,39 +93,23 @@ export default function GenerateExamPage() {
     setLoading(true);
 
     try {
-      console.log("Generating exam with data:", {
-        ...formData,
+      // 다중 PDF 지원: pdf_ids 배열 사용
+      const request: ExamGenerationRequest = {
         pdf_ids: selectedPdfIds,
-      });
-      
-      // 시험 생성 요청 (비동기, 즉시 반환)
-      const exam = await generateExam(subjectId, {
-        ...formData,
-        pdf_ids: selectedPdfIds,
-      });
-      
-      console.log("Received placeholder exam:", exam);
-      
-      toast({
-        title: "시험 생성 시작",
-        description: "AI가 시험 문제를 생성하고 있습니다. 잠시만 기다려주세요...",
-      });
+        num_questions: formData.num_questions,
+        difficulty: formData.difficulty,
+      };
 
-      // 시험 상태 polling 시작
-      await pollExamStatus(exam.exam_id);
-      
-      // 완료되면 시험 페이지로 이동
+      const exam = await generateExam(subjectId, request);
       toast({
         title: "시험 생성 완료",
-        description: `${selectedPdfIds.length}개 PDF로부터 시험이 생성되었습니다.`,
+        description: "AI가 시험을 성공적으로 생성했습니다.",
       });
       router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`);
     } catch (error: any) {
-      console.error("Exam generation error:", error);
-      console.error("Error response:", error.response);
       toast({
         title: "시험 생성 실패",
-        description: error.message || "알 수 없는 오류가 발생했습니다.",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -154,10 +117,22 @@ export default function GenerateExamPage() {
     }
   };
 
+  if (pdfsLoading) {
+    return (
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner size="lg" />
+          </div>
+        </AppLayout>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute>
       <AppLayout>
-        <div className="mx-auto max-w-2xl space-y-6">
+        <div className="mx-auto max-w-3xl space-y-6">
           {/* Header */}
           <div>
             <Link href={`/dashboard/subjects/${subjectId}`}>
@@ -174,92 +149,88 @@ export default function GenerateExamPage() {
 
           {/* PDF Selection */}
           <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">PDF 선택</h2>
-                <p className="text-sm text-gray-600">
-                  시험에 포함할 PDF를 선택하세요 (최대 10개)
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">PDF 선택</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    disabled={loading || pdfs.length === 0}
+                  >
+                    {selectedPdfIds.length === pdfs.length
+                      ? "전체 해제"
+                      : "전체 선택"}
+                  </Button>
+                </div>
+
+                {pdfs.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
+                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-4 text-sm font-semibold text-gray-900">
+                      업로드된 PDF가 없습니다
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      먼저 PDF를 업로드해주세요.
+                    </p>
+                    <Link href={`/dashboard/subjects/${subjectId}`}>
+                      <Button className="mt-4" variant="outline">
+                        과목 페이지로 이동
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {pdfs.map((pdf) => (
+                      <div
+                        key={pdf.file_id}
+                        className={`flex items-start gap-3 rounded-lg border p-4 transition-all ${
+                          selectedPdfIds.includes(pdf.file_id)
+                            ? "border-emerald-500 bg-emerald-50"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Checkbox
+                          id={pdf.file_id}
+                          checked={selectedPdfIds.includes(pdf.file_id)}
+                          onCheckedChange={() => handlePdfToggle(pdf.file_id)}
+                          disabled={loading}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={pdf.file_id}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="font-medium text-gray-900">
+                            {pdf.original_filename}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {(pdf.size / 1024 / 1024).toFixed(2)} MB •{" "}
+                            {new Date(pdf.uploaded_at).toLocaleDateString(
+                              "ko-KR"
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500">
+                  ✨ <strong>{selectedPdfIds.length}개</strong>의 PDF 선택됨
+                  {selectedPdfIds.length > 1 && (
+                    <span className="text-emerald-600">
+                      {" "}
+                      (여러 PDF의 내용을 종합하여 시험이 생성됩니다)
+                    </span>
+                  )}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-                disabled={loadingPdfs}
-              >
-                {selectedPdfIds.length === pdfs.length ? (
-                  <>
-                    <Square className="mr-2 h-4 w-4" />
-                    전체 해제
-                  </>
-                ) : (
-                  <>
-                    <CheckSquare className="mr-2 h-4 w-4" />
-                    전체 선택
-                  </>
-                )}
-              </Button>
-            </div>
+            </Card>
 
-            {loadingPdfs ? (
-              <div className="flex items-center justify-center py-8">
-                <LoadingSpinner size="lg" />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="mb-3 rounded-lg bg-blue-50 p-3">
-                  <p className="text-sm text-blue-900">
-                    <strong>{selectedPdfIds.length}개 PDF 선택됨</strong>
-                  </p>
-                  {selectedPdfIds.length > 1 && (
-                    <p className="mt-1 text-xs text-blue-700">
-                      여러 PDF의 내용을 종합하여 시험이 생성됩니다
-                    </p>
-                  )}
-                </div>
-                
-                {pdfs.map((pdf) => (
-                  <div
-                    key={pdf.file_id}
-                    className="flex items-center gap-3 rounded-lg border p-3 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() =>
-                      handlePdfToggle(
-                        pdf.file_id,
-                        !selectedPdfIds.includes(pdf.file_id)
-                      )
-                    }
-                  >
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedPdfIds.includes(pdf.file_id)}
-                        onCheckedChange={(checked) =>
-                          handlePdfToggle(pdf.file_id, checked as boolean)
-                        }
-                      />
-                    </div>
-                    <FileText className="h-5 w-5 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="font-medium">{pdf.original_filename}</p>
-                      <p className="text-sm text-gray-500">
-                        {(pdf.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
-                    {pdf.file_id === pdfId && (
-                      <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
-                        선택한 PDF
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Form */}
-          <Card>
-            <form onSubmit={handleSubmit} className="space-y-6 p-6">
-              {/* Number of Questions and Difficulty */}
+            {/* Exam Options */}
+            <Card className="p-6">
               <div className="space-y-6">
                 {/* Number of Questions */}
                 <div>
@@ -320,37 +291,40 @@ export default function GenerateExamPage() {
                   </div>
                 </div>
               </div>
+            </Card>
 
-              {/* Estimated Time */}
-              <div className="rounded-lg bg-emerald-50 p-4">
-                <p className="text-sm text-emerald-900">
-                  <strong>⚡ 예상 소요 시간:</strong>{" "}
-                  {formData.num_questions === 5
-                    ? "약 1분"
-                    : formData.num_questions === 10
-                    ? "약 3분"
-                    : "약 5분"}
-                </p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  AI가 PDF를 빠르게 분석하고 문제를 생성합니다.
-                </p>
-              </div>
+            {/* Estimated Time */}
+            <div className="rounded-lg bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-900">
+                <strong>⚡ 예상 소요 시간:</strong>{" "}
+                {formData.num_questions === 5
+                  ? "약 1분"
+                  : formData.num_questions === 10
+                  ? "약 3분"
+                  : "약 5분"}
+              </p>
+              <p className="mt-1 text-xs text-emerald-700">
+                AI가 PDF를 빠르게 분석하고 문제를 생성합니다.
+              </p>
+            </div>
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      생성 중... (잠시만 기다려주세요)
-                    </>
-                  ) : (
-                    "시험 생성"
-                  )}
-                </Button>
-              </div>
+            {/* Actions */}
+            <form onSubmit={handleSubmit}>
+              <Button
+                type="submit"
+                disabled={loading || selectedPdfIds.length === 0}
+                className="w-full"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    생성 중... (잠시만 기다려주세요)
+                  </>
+                ) : (
+                  "시험 생성"
+                )}
+              </Button>
             </form>
-          </Card>
 
           {/* Info */}
           <Card className="p-6">
@@ -366,4 +340,3 @@ export default function GenerateExamPage() {
     </ProtectedRoute>
   );
 }
-
