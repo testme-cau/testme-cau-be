@@ -1,0 +1,148 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "cancel": "취소",
+    "delete": "삭제",
+    "logout": "로그아웃",
+    "pdfCount": "{count}개 PDF",
+    "examCount": "{count}개 시험"
+  },
+  "language": {
+    "changeSuccessTitle": "언어가 변경되었어요",
+    "changeSuccessDescription": "새 언어로 UI와 시험이 표시됩니다.",
+    "loadError": "언어 정보를 불러올 수 없어요",
+    "changeError": "언어 변경에 실패했어요",
+    "selectedLabel": "{language} 선택, 변경하려면 클릭",
+    "selectLabel": "언어 선택"
+  },
+  "sidebar": {
+    "dashboard": "대시보드"
+  },
+  "groups": {
+    "title": "그룹",
+    "all": "모든 과목",
+    "none": "그룹 없음",
+    "new": "새 그룹",
+    "loading": "로딩 중...",
+    "edit": "수정",
+    "delete": "삭제"
+  },
+  "dashboard": {
+    "headerTitle": "대시보드",
+    "headerSubtitle": "과목을 선택하여 PDF를 업로드하고 시험을 생성하세요",
+    "addSubjectButton": "새 과목 추가",
+    "emptyTitle": "과목이 없습니다",
+    "emptyDescription": "첫 과목을 추가하여 시작하세요",
+    "emptyTitleGroup": "이 그룹에 과목이 없습니다",
+    "emptyDescriptionGroup": "다른 그룹을 선택하거나 새 과목을 추가하세요",
+    "emptyAction": "과목 추가",
+    "loadFailureTitle": "데이터 로드 실패",
+    "subjectLoadFailureTitle": "과목 로드 실패",
+    "deleteDialogTitle": "과목 삭제",
+    "deleteDialogDescription": "정말로 \"{name}\" 과목을 삭제하시겠습니까? 이 과목에 속한 모든 PDF와 시험도 함께 삭제됩니다.",
+    "deleteSuccessTitle": "과목 삭제 완료",
+    "deleteSuccessDescription": "\"{name}\" 과목이 삭제되었습니다.",
+    "deleteFailureTitle": "과목 삭제 실패",
+    "deleteActionLabel": "과목 삭제"
+  },
+  "landing": {
+    "nav": {
+      "signin": "로그인",
+      "signup": "시작하기",
+      "product": "제품",
+      "features": "특징",
+      "pricing": "가격",
+      "about": "소개"
+    },
+    "hero": {
+      "eyebrow": "AI 기반 시험 생성",
+      "titlePrimary": "시험으로 배우는,",
+      "titleHighlight": "가장 효과적인 공부법",
+      "subtitle": "강의 자료로 시험 문제를 풀고, 틀린 부분을 다시 학습하세요.{br}능동적 회상으로 기억에 확실하게 남깁니다.",
+      "betaBadge": "현재 클로즈베타 진행 중! 곧 오픈됩니다.",
+      "cta": "시작하기",
+      "usage": "<strong>{count}명+</strong>이 이미 사용 중"
+    },
+    "features": {
+      "title": "AI가 만들어주는 맞춤형 학습 경험",
+      "subtitle": "시험 생성부터 채점까지, 학습 전 과정을 자동화하세요.",
+      "items": [
+        {
+          "title": "PDF 업로드",
+          "description": "강의 슬라이드나 요약본을 그대로 업로드하면 AI가 분석하여 핵심 내용을 파악합니다."
+        },
+        {
+          "title": "맞춤형 시험 생성",
+          "description": "난이도, 문항 수, 언어를 지정하면 해당 조건에 맞춰 다양한 유형의 시험을 생성합니다."
+        },
+        {
+          "title": "AI 자동 채점",
+          "description": "제출한 답안을 AI가 즉시 채점하고, 틀린 이유와 보완 학습 가이드를 제공합니다."
+        },
+        {
+          "title": "실시간 결과 분석",
+          "description": "시험 결과를 실시간으로 확인하고 학습 패턴을 분석해 더 나은 문제를 추천합니다."
+        }
+      ]
+    },
+    "benefits": {
+      "title": "왜 test.me인가요?",
+      "subtitle": "시간도 절약하고, 품질도 높이는 스마트한 선택",
+      "items": [
+        {
+          "stat": "90%",
+          "label": "시간 절약",
+          "description": "수동 작업 대비 90% 시간을 단축하세요"
+        },
+        {
+          "stat": "99%",
+          "label": "정확도",
+          "description": "AI 기반 일관된 평가로 공정한 채점"
+        },
+        {
+          "stat": "∞",
+          "label": "맞춤화",
+          "description": "난이도별로 원하는 문제를 자유롭게"
+        },
+        {
+          "stat": "∞",
+          "label": "확장성",
+          "description": "제한 없이 시험을 생성하고 관리"
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "3단계로 끝내는 학습 사이클",
+      "subtitle": "자료 업로드부터 채점까지 모든 과정을 단순화했습니다.",
+      "ctaHint": "지금 바로 시작해보세요! 🚀",
+      "steps": [
+        {
+          "title": "자료 업로드",
+          "description": "PDF, 노트, 요약본을 업로드하면 AI가 자동으로 분석합니다."
+        },
+        {
+          "title": "시험 응시",
+          "description": "생성된 시험을 풀고, 필요한 만큼 여러 번 재도전할 수 있습니다."
+        },
+        {
+          "title": "AI 피드백",
+          "description": "즉시 채점 결과와 틀린 이유, 보완 학습 가이드를 받아 복습에 활용하세요."
+        }
+      ]
+    },
+    "cta": {
+      "title": "지금 바로 능동적 학습을 시작하세요",
+      "subtitle": "클로즈 베타에 참여하고, 여러분의 학습 데이터를 기반으로 한 맞춤형 시험을 체험해보세요.",
+      "button": "베타 신청하기",
+      "footnote": "무료 체험 기간 제공"
+    },
+    "footer": {
+      "description": "AI가 도와주는 스마트한 시험 제작 플랫폼.",
+      "rights": "© {year} test.me. 모든 권리를 보유하고 있습니다.",
+      "privacy": "개인정보 처리방침",
+      "terms": "이용약관",
+      "contact": "문의하기"
+    }
+  }
+}
+

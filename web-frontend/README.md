@@ -47,6 +47,18 @@ npm start
 - Axios (API Client)
 - React Hook Form + Zod (Form Validation)
 - Zustand (State Management)
+- next-intl (Client i18n)
+
+## 다국어(i18n)
+
+- 사용자/과목의 `language_preference`를 기반으로 `next-intl` Provider가 UI 문자열을 전환합니다.
+- 번역 리소스는 `src/i18n/locales/{ko,en,ja}.json`에 있으며, 동일한 키 구조를 유지해야 합니다.
+- 새 언어를 추가하려면:
+  1. `src/i18n/config.ts`의 `supportedLocales` 배열에 ISO 코드를 추가합니다.
+  2. `src/i18n/locales/<code>.json` 파일을 생성하여 기존 키를 모두 번역합니다.
+  3. `src/i18n/messages.ts`에서 새 JSON을 import하고 `messagesByLocale`에 등록합니다.
+- UI에서 지구본 아이콘을 클릭하면 언어를 즉시 변경할 수 있으며, 백엔드 `PUT /api/user/profile`을 통해 사용자 설정이 저장됩니다.
+- 시간대 일관성을 위해 `NEXT_PUBLIC_I18N_TIMEZONE`(기본값 `Asia/Seoul`) 환경 변수를 설정할 수 있습니다.
 
 ## 프로젝트 구조
 
@@ -67,4 +79,3 @@ src/
 - [ ] Firebase Auth 통합
 - [ ] API 클라이언트 구현
 - [ ] 페이지 구현 (로그인, 대시보드, PDF 관리, 시험)
-

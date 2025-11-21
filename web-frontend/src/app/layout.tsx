@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { LocaleProvider } from "@/providers/LocaleProvider";
 
 export const metadata: Metadata = {
   title: "test.me - AI Exam Platform",
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased">
-        {children}
-        <Toaster />
+        <LocaleProvider>
+          {children}
+          <Toaster />
+        </LocaleProvider>
       </body>
     </html>
   );

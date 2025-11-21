@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export function Navigation() {
   const [isVisible, setIsVisible] = useState(false);
+  const navT = useTranslations('landing.nav');
+  const heroT = useTranslations('landing.hero');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,7 +54,7 @@ export function Navigation() {
                   }}
               className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
-              특징
+              {navT('features')}
                 </button>
                 <button
                   onClick={() => {
@@ -60,7 +63,7 @@ export function Navigation() {
                   }}
               className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
-              장점
+              {navT('benefits')}
                 </button>
                 <button
                   onClick={() => {
@@ -69,7 +72,7 @@ export function Navigation() {
                   }}
               className="text-gray-600 hover:text-primary-600 transition-colors duration-200 font-medium"
             >
-              사용방법
+              {navT('about')}
                 </button>
           </div>
 
@@ -85,7 +88,7 @@ export function Navigation() {
                     size="lg"
                     className="bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg transition-all duration-300 group"
                   >
-                    시작하기
+                    {heroT('cta')}
                     <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>

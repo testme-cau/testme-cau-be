@@ -2,29 +2,12 @@
 
 import { Github, Twitter, Linkedin, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-
-  const footerLinks = {
-    product: [
-      { name: '기능', href: '#features' },
-      { name: '가격', href: '#pricing' },
-      { name: 'FAQ', href: '#faq' },
-      { name: '데모', href: '#demo' },
-    ],
-    company: [
-      { name: '소개', href: '#about' },
-      { name: '블로그', href: '#blog' },
-      { name: '채용', href: '#careers' },
-      { name: '연락처', href: '#contact' },
-    ],
-    legal: [
-      { name: '개인정보처리방침', href: '#privacy' },
-      { name: '이용약관', href: '#terms' },
-      { name: '쿠키 정책', href: '#cookies' },
-    ],
-  };
+  const t = useTranslations('landing.footer');
+  const navT = useTranslations('landing.nav');
 
   const socialLinks = [
     { name: 'GitHub', icon: Github, href: 'https://github.com' },
@@ -33,20 +16,24 @@ export function Footer() {
     { name: 'Email', icon: Mail, href: 'mailto:contact@testme.com' },
   ];
 
+  const quickLinks = [
+    { label: navT('features'), href: '#features' },
+    { label: navT('benefits'), href: '#benefits' },
+    { label: navT('about'), href: '#how-it-works' },
+  ];
+
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="container mx-auto px-4 py-16">
         {/* Main footer content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand section */}
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block mb-4">
               <h3 className="text-2xl font-bold text-white">test.me</h3>
             </Link>
             <p className="text-gray-400 mb-6 leading-relaxed max-w-sm">
-              AI가 도와주는 스마트한 시험 제작 플랫폼.
-              <br />
-              시험 만들기, 이제 쉽게!
+              {t('description')}
             </p>
             {/* Social links */}
             <div className="flex gap-4">
@@ -68,34 +55,17 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Product links */}
+          {/* Quick links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">제품</h4>
+            <h4 className="text-white font-semibold mb-4">{navT('product')}</h4>
             <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
-                <li key={link.name}>
+              {quickLinks.map((link) => (
+                <li key={link.label}>
                   <Link
                     href={link.href}
                     className="hover:text-primary-400 transition-colors duration-200"
                   >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company links */}
-          <div>
-            <h4 className="text-white font-semibold mb-4">회사</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="hover:text-primary-400 transition-colors duration-200"
-                  >
-                    {link.name}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -104,18 +74,23 @@ export function Footer() {
 
           {/* Legal links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">법적 고지</h4>
+            <h4 className="text-white font-semibold mb-4">{t('privacy')}</h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="hover:text-primary-400 transition-colors duration-200"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link href="#privacy" className="hover:text-primary-400 transition-colors duration-200">
+                  {t('privacy')}
+                </Link>
+              </li>
+              <li>
+                <Link href="#terms" className="hover:text-primary-400 transition-colors duration-200">
+                  {t('terms')}
+                </Link>
+              </li>
+              <li>
+                <Link href="mailto:contact@testme.com" className="hover:text-primary-400 transition-colors duration-200">
+                  {t('contact')}
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -124,7 +99,7 @@ export function Footer() {
         <div className="pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-400">
-              © {currentYear} test.me. All rights reserved.
+              {t('rights', { year: currentYear })}
             </p>
             <p className="text-sm text-gray-400">
               Made with 💚 by test.me team

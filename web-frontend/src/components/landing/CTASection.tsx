@@ -4,8 +4,12 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export function CTASection() {
+  const t = useTranslations('landing.cta');
+  const heroT = useTranslations('landing.hero');
+
   return (
     <section className="py-24 bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-600 relative overflow-hidden">
       {/* Animated background elements */}
@@ -24,13 +28,11 @@ export function CTASection() {
         >
           {/* Main message */}
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            시험 만들기,
-            <br />
-            이제는 더 쉽게!
+            {t('title')}
           </h2>
 
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
-            AI가 도와주는 스마트한 시험 제작, 지금 무료로 시작하세요
+            {t('subtitle')}
           </p>
 
           {/* CTA Button */}
@@ -46,7 +48,7 @@ export function CTASection() {
                 size="lg" 
                 className="bg-white text-primary-700 hover:bg-gray-50 shadow-2xl hover:shadow-3xl transition-all duration-300 group px-10 py-7 text-lg font-semibold"
               >
-                지금 시작하기
+                {t('button')}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
@@ -62,7 +64,10 @@ export function CTASection() {
           >
             <Users className="w-5 h-5" />
             <p className="text-lg">
-              이미 <span className="font-bold text-white">1,000명+</span>이 사용 중이에요
+              {heroT.rich('usage', {
+                strong: (chunks) => <span className="font-bold text-white">{chunks}</span>,
+                count: '1,000',
+              })}
             </p>
           </motion.div>
 
@@ -74,7 +79,7 @@ export function CTASection() {
             transition={{ duration: 0.6, delay: 0.6 }}
             className="mt-8 text-white/70 text-sm"
           >
-            신용카드 등록 없이 바로 시작 · 언제든 취소 가능
+            {t('footnote')}
           </motion.div>
         </motion.div>
       </div>

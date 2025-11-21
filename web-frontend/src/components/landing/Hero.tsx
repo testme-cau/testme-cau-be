@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { fetchBetaStatus } from '@/lib/api/system';
+import type { BetaStatusResponse } from '@/types/api';
+import { useTranslations } from 'next-intl';
 
 export function Hero() {
   const [ctaOpacity, setCtaOpacity] = useState(1);
+  const [betaStatus, setBetaStatus] = useState<BetaStatusResponse | null>(null);
+  const t = useTranslations('landing.hero');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,6 +27,16 @@ export function Hero() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    fetchBetaStatus()
+      .then(setBetaStatus)
+      .catch(() => {
+        // 노출 실패 시 조용히 무시 (랜딩은 항상 접근 가능해야 함)
+      });
+  }, []);
+
+  const isClosedBeta = betaStatus?.status === 'closed_beta';
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-brand-gradient">
@@ -57,10 +72,10 @@ export function Hero() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight"
           >
-            시험으로 배우는,
+            {t('titlePrimary')}
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-600">
-              가장 효과적인 공부법
+              {t('titleHighlight')}
             </span>
           </motion.h1>
 
@@ -71,10 +86,26 @@ export function Hero() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed"
           >
-            강의 자료로 시험 문제를 풀고, 틀린 부분을 다시 학습하세요.
-            <br />
-            능동적 회상으로 기억에 확실하게 남깁니다.
+            {t.rich('subtitle', {
+              br: () => (
+                <>
+                  <br />
+                </>
+              ),
+            })}
           </motion.p>
+
+          {isClosedBeta && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.4 }}
+              className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/80 text-amber-600 border border-amber-200 shadow-sm mb-6"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm font-semibold">{t('betaBadge')}</span>
+            </motion.div>
+          )}
 
           {/* CTA Buttons - 스크롤 시 페이드아웃 */}
           <motion.div
@@ -89,7 +120,7 @@ export function Hero() {
                 size="lg" 
                 className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 group px-8 py-6 text-lg"
               >
-                시작하기
+                {t('cta')}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
@@ -111,7 +142,12 @@ export function Hero() {
               </div>
             </div>
             <p>
-              <span className="font-semibold text-gray-700">1,000명+</span>이 이미 사용 중
+              {t.rich('usage', {
+                strong: (chunks) => (
+                  <span className="font-semibold text-gray-700">{chunks}</span>
+                ),
+                count: '1,000',
+              })}
             </p>
           </motion.div>
         </motion.div>
