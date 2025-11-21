@@ -24,6 +24,12 @@ The system supports **multiple AI providers** with a unified interface:
 
 Users can select the AI provider via query parameter or use the system default.
 
+### Exam History Personalization
+
+- Recent graded submissions that share the same PDF set are summarized and used to guide new exam generation.
+- The number of submissions inspected, per-topic caps, and prompt limits are configurable through the `EXAM_HISTORY_*` environment variables.
+- Low-scoring topics are prioritized while mastered topics are deemphasized, helping each exam target the learner's weak spots.
+
 ## Tech Stack
 
 - **Framework**: FastAPI 0.109.0
@@ -109,6 +115,13 @@ DEFAULT_AI_PROVIDER=gpt  # or gemini
 
 # CORS
 CORS_ORIGINS=*
+
+# Exam History Personalization (optional)
+EXAM_HISTORY_LIMIT=30
+EXAM_HISTORY_PER_TOPIC=3
+EXAM_HISTORY_PER_EXAM_LIMIT=5
+EXAM_HISTORY_FEEDBACK_MAX_CHARS=200
+EXAM_HISTORY_PROMPT_LIMIT=30
 ```
 
 5. **Set up Firebase credentials**
