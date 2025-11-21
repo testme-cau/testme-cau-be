@@ -3,6 +3,7 @@ PDF routes (file upload and management) - Subject-based structure
 """
 from datetime import datetime
 from typing import Dict, Any
+from urllib.parse import unquote
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, status, Path
 
 from app.dependencies.auth import get_current_user
@@ -36,6 +37,10 @@ async def upload_pdf(
             detail="No file selected"
         )
     
+    # Decode filename to handle URL-encoded Korean characters
+    # FastAPI's UploadFile.filename may be URL-encoded
+    decoded_filename = unquote(file.filename, encoding='utf-8')
+    
     # Read file content
     file_content = await file.read()
     file_length = len(file_content)
@@ -48,7 +53,7 @@ async def upload_pdf(
         user['uid'],
         subject_id,
         file.file,
-        file.filename,
+        decoded_filename,
         file_length
     )
     
