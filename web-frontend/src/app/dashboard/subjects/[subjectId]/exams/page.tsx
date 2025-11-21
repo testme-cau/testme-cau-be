@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getExams, deleteExam } from "@/lib/api/exams";
 import { getSubject } from "@/lib/api/subjects";
 import { Exam, Subject } from "@/types/api";
-import { ArrowLeft, ClipboardList, Clock, Target, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, Clock, Target, Trash2, Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function ExamsListPage() {
@@ -184,16 +184,24 @@ export default function ExamsListPage() {
                 과목으로 돌아가기
               </Button>
             </Link>
-            <div className="flex items-center gap-3">
-              {subject && (
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: subject.color || "#6B7280" }}
-                />
-              )}
-              <h1 className="text-3xl font-bold">
-                {subject?.name} - 시험 목록
-              </h1>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {subject && (
+                  <div
+                    className="h-4 w-4 rounded"
+                    style={{ backgroundColor: subject.color || "#6B7280" }}
+                  />
+                )}
+                <h1 className="text-3xl font-bold">
+                  {subject?.name} - 시험 목록
+                </h1>
+              </div>
+              <Link href={`/dashboard/subjects/${subjectId}/exams/new`}>
+                <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all">
+                  <Plus className="mr-2 h-4 w-4" />
+                  시험 생성
+                </Button>
+              </Link>
             </div>
             <p className="mt-2 text-gray-600">
               생성된 시험 목록입니다. 시험을 선택하여 응시하세요.
