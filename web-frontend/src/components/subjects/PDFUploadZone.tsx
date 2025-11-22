@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
@@ -11,17 +11,24 @@ interface PDFUploadZoneProps {
 
 export function PDFUploadZone({ onFileUpload, uploading, uploadProgress }: PDFUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    dragCounter.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -32,6 +39,7 @@ export function PDFUploadZone({ onFileUpload, uploading, uploadProgress }: PDFUp
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounter.current = 0;
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files).filter(
