@@ -43,6 +43,62 @@ class PDFRepository(BaseRepository[PDF]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to list PDFs: {str(e)}"
             )
+
+    def list_all_for_user(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all PDFs for a user across every subject.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of PDF data
+        """
+        try:
+            query = (
+                self.db.collection_group('pdfs')
+                .where('user_id', '==', user_id)
+                .order_by('uploaded_at', direction=firestore.Query.DESCENDING)
+            )
+            return [doc.to_dict() for doc in query.stream()]
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to list PDFs: {str(e)}"
+            )
+
+    def get_by_file_id(self, user_id: str, pdf_id: str) -> Dict[str, Any]:
+        """
+        Fetch a single PDF by file_id across all subjects.
+
+        Args:
+            user_id: User ID
+            pdf_id: PDF ID
+
+        Returns:
+            PDF data
+        """
+        try:
+            query = (
+                self.db.collection_group('pdfs')
+                .where('user_id', '==', user_id)
+                .where('file_id', '==', pdf_id)
+                .limit(1)
+            )
+            docs = list(query.stream())
+            if not docs:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="PDF not found"
+                )
+            return docs[0].to_dict()
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to fetch PDF: {str(e)}"
+            )
     
     def get_by_id_with_ownership(self, user_id: str, subject_id: str, pdf_id: str) -> Dict[str, Any]:
         """

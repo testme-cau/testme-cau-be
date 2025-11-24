@@ -15,12 +15,15 @@ import { getPDFs } from "@/lib/api/pdfs";
 import { PDF, ExamGenerationRequest } from "@/types/api";
 import { ArrowLeft, Loader2, FileText } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ExamLanguageSelect } from "@/components/subjects/ExamLanguageSelect";
+import { useLocaleStore } from "@/store/localeStore";
 
 export default function NewExamPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const subjectId = params.subjectId as string;
+  const storeLocale = useLocaleStore((state) => state.locale);
 
   const [loading, setLoading] = useState(false);
   const [pdfsLoading, setPdfsLoading] = useState(true);
@@ -30,6 +33,7 @@ export default function NewExamPage() {
     num_questions: 5,
     difficulty: "medium" as "easy" | "medium" | "hard",
   });
+  const [language, setLanguage] = useState<string>(storeLocale);
 
   useEffect(() => {
     loadPDFs();
@@ -85,6 +89,7 @@ export default function NewExamPage() {
         pdf_ids: selectedPdfIds,
         num_questions: formData.num_questions,
         difficulty: formData.difficulty,
+        language,
       };
 
       const job = await generateExam(subjectId, request);
@@ -231,6 +236,11 @@ export default function NewExamPage() {
             {/* Exam Options */}
             <Card className="p-6">
               <div className="space-y-6">
+                <ExamLanguageSelect
+                  value={language}
+                  onChange={setLanguage}
+                  disabled={loading}
+                />
                 {/* Number of Questions */}
                 <div>
                   <Label>문제 수</Label>

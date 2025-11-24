@@ -6,7 +6,10 @@ import io
 import json
 import logging
 import os
+from functools import partial
 from typing import Any, Dict, List, Optional
+
+import anyio
 
 import google.generativeai as genai
 
@@ -101,8 +104,13 @@ class GeminiService(AIServiceInterface):
             return clean_text(data)
         else:
             return data
+
+    async def _run_blocking(self, func, *args, **kwargs):
+        """Run blocking Gemini SDK calls in a worker thread."""
+        bound = partial(func, *args, **kwargs)
+        return await anyio.to_thread.run_sync(bound)
     
-    def generate_exam_from_pdf(
+    async def generate_exam_from_pdf(
         self,
         pdf_bytes: bytes,
         original_filename: str,
@@ -127,7 +135,11 @@ class GeminiService(AIServiceInterface):
         try:
             # Upload PDF to Gemini
             pdf_file = io.BytesIO(pdf_bytes)
-            uploaded_file = genai.upload_file(pdf_file, mime_type='application/pdf')
+            uploaded_file = await self._run_blocking(
+                genai.upload_file,
+                pdf_file,
+                mime_type='application/pdf'
+            )
             
             self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name}")
             
@@ -236,7 +248,8 @@ class GeminiService(AIServiceInterface):
                 response_schema=self.exam_schema
             )
             
-            response = self.model.generate_content(
+            response = await self._run_blocking(
+                self.model.generate_content,
                 [uploaded_file, prompt],
                 generation_config=generation_config
             )
@@ -262,7 +275,7 @@ class GeminiService(AIServiceInterface):
                     raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
             
             # Delete uploaded file
-            genai.delete_file(uploaded_file.name)
+            await self._run_blocking(genai.delete_file, uploaded_file.name)
             
             return {
                 'success': True,
@@ -277,7 +290,7 @@ class GeminiService(AIServiceInterface):
                 'error': str(e),
             }
     
-    def generate_exam_from_multiple_pdfs(
+    async def generate_exam_from_multiple_pdfs(
         self,
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
@@ -302,7 +315,11 @@ class GeminiService(AIServiceInterface):
             uploaded_files = []
             for pdf_bytes, original_filename in pdf_bytes_list:
                 pdf_file = io.BytesIO(pdf_bytes)
-                uploaded_file = genai.upload_file(pdf_file, mime_type='application/pdf')
+                uploaded_file = await self._run_blocking(
+                    genai.upload_file,
+                    pdf_file,
+                    mime_type='application/pdf'
+                )
                 uploaded_files.append(uploaded_file)
                 self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name} ({original_filename})")
             
@@ -414,7 +431,8 @@ class GeminiService(AIServiceInterface):
             
             # Combine all files and prompt for content generation
             content_parts = uploaded_files + [prompt]
-            response = self.model.generate_content(
+            response = await self._run_blocking(
+                self.model.generate_content,
                 content_parts,
                 generation_config=generation_config
             )
@@ -442,7 +460,7 @@ class GeminiService(AIServiceInterface):
             # Delete all uploaded files
             for uploaded_file in uploaded_files:
                 try:
-                    genai.delete_file(uploaded_file.name)
+                    await self._run_blocking(genai.delete_file, uploaded_file.name)
                 except Exception as e:
                     self.logger.warning(f"Failed to delete file {uploaded_file.name}: {e}")
             
@@ -459,12 +477,13 @@ class GeminiService(AIServiceInterface):
                 'error': str(e),
             }
     
-    def grade_exam_with_pdf(
+    async def grade_exam_with_pdf(
         self,
         pdf_bytes: bytes,
         original_filename: str,
         questions: List[Dict[str, Any]],
-        answers: List[Dict[str, Any]]
+        answers: List[Dict[str, Any]],
+        language: str = "ko"
     ) -> Dict[str, Any]:
         """
         Grade exam answers by referencing the original PDF using Gemini
@@ -479,9 +498,16 @@ class GeminiService(AIServiceInterface):
             Dict with success status and grading results
         """
         try:
+            from app.utils.language_utils import get_language_name
+            lang_name = get_language_name(language)
+
             # Upload PDF to Gemini
             pdf_file = io.BytesIO(pdf_bytes)
-            uploaded_file = genai.upload_file(pdf_file, mime_type='application/pdf')
+            uploaded_file = await self._run_blocking(
+                genai.upload_file,
+                pdf_file,
+                mime_type='application/pdf'
+            )
             
             self.logger.info(f"Uploaded PDF for grading to Gemini: {uploaded_file.name}")
             
@@ -509,7 +535,13 @@ After grading all questions, provide:
 - strengths: 2-3 specific achievements (what student did well)
 - weaknesses: 2-3 areas needing improvement (specific topics)
 - study_recommendations: 2-3 actionable study suggestions
-
+"""
+            grading_text += (
+                f"\nLANGUAGE REQUIREMENT:\n"
+                f"- All JSON string values (feedback, model answers, summaries) must be written in {lang_name} "
+                f"(language code: {language}).\n\n"
+            )
+            grading_text += """
 Return ONLY valid JSON with this structure (no markdown, no code blocks):
 {
     "question_results": [
@@ -534,7 +566,6 @@ Return ONLY valid JSON with this structure (no markdown, no code blocks):
 Here are the questions and answers to grade:
 
 """
-            
             for question in questions:
                 q_id = question['id']
                 answer = next((a for a in answers if a['question_id'] == q_id), None)
@@ -546,10 +577,10 @@ Here are the questions and answers to grade:
                 else:
                     grading_text += "Student's Answer: [No answer provided]\n"
             
-            grading_text += "\nProvide your grading now:"
+            grading_text += f"\nProvide your grading now in {lang_name}:"
             
             # Grade with Gemini
-            response = self.model.generate_content([uploaded_file, grading_text])
+            response = await self._run_blocking(self.model.generate_content, [uploaded_file, grading_text])
             response_text = response.text
             
             # Parse JSON from response
@@ -572,7 +603,7 @@ Here are the questions and answers to grade:
             result_data = self._remove_citations(result_data)
             
             # Delete uploaded file
-            genai.delete_file(uploaded_file.name)
+            await self._run_blocking(genai.delete_file, uploaded_file.name)
             
             return {
                 'success': True,
@@ -586,7 +617,7 @@ Here are the questions and answers to grade:
                 'error': str(e),
             }
     
-    def grade_answer(
+    async def grade_answer(
         self,
         question: str,
         student_answer: str,
@@ -626,7 +657,7 @@ Return ONLY valid JSON with this structure (no markdown, no code blocks):
 Provide your grading now:
 """
             
-            response = self.model.generate_content(prompt)
+            response = await self._run_blocking(self.model.generate_content, prompt)
             response_text = response.text
             
             # Parse JSON

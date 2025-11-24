@@ -1,4 +1,6 @@
 // Group Types
+export type ServiceStatus = 'closed_beta' | 'open_beta' | 'release';
+
 export interface Group {
   group_id: string;
   user_id: string;
@@ -25,6 +27,39 @@ export interface GroupUpdateRequest {
 }
 
 // Subject Types
+export interface LanguageOption {
+  code: string;
+  name: string;
+  native_name: string;
+  flag: string;
+}
+
+export interface LanguageListResponse {
+  success: boolean;
+  languages: LanguageOption[];
+  count: number;
+}
+
+export interface UserProfile {
+  uid: string;
+  email?: string | null;
+  display_name?: string | null;
+  photo_url?: string | null;
+  language_preference: string;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+export interface UserProfileResponse {
+  success: boolean;
+  user: UserProfile;
+}
+
+export interface UserProfileUpdateRequest {
+  display_name?: string;
+  language_preference?: string;
+}
+
 export interface Subject {
   subject_id: string;
   user_id: string;
@@ -92,6 +127,7 @@ export interface Exam {
   created_at: string;
   status: string;
   ai_provider?: string;
+  language?: string;
 }
 
 export interface ExamGenerationRequest {
@@ -99,6 +135,7 @@ export interface ExamGenerationRequest {
   num_questions: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   ai_provider?: 'gpt' | 'gemini';
+  language?: string;
 }
 
 export interface AnswerSubmission {
@@ -117,6 +154,7 @@ export interface QuestionResult {
   score: number;
   max_points: number;
   feedback: string;
+  model_answer?: string;
   is_correct?: boolean;
 }
 
@@ -131,10 +169,52 @@ export interface GradingResult {
 export interface SubmissionResult {
   submission_id: string;
   status: 'pending' | 'grading' | 'graded' | 'failed';
+  answers?: AnswerSubmission[];
   grading_result?: GradingResult;
   error_message?: string;
   submitted_at: string;
   graded_at?: string;
+}
+
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+export interface ExamJob {
+  job_id: string;
+  subject_id: string;
+  pdf_ids: string[];
+  num_questions: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  ai_provider?: 'gpt' | 'gemini';
+  ai_model?: string;
+  language?: string;
+  status: JobStatus;
+  progress_percentage: number;
+  estimated_duration_seconds?: number;
+  exam_id?: string;
+  error_message?: string;
+  created_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  failed_at?: string;
+  cancelled_at?: string;
+}
+
+export interface GradingJob {
+  job_id: string;
+  subject_id: string;
+  exam_id: string;
+  submission_id: string;
+  total_questions: number;
+  status: JobStatus;
+  ai_provider?: 'gpt' | 'gemini';
+  progress_percentage: number;
+  estimated_duration_seconds?: number;
+  error_message?: string;
+  created_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  failed_at?: string;
+  cancelled_at?: string;
 }
 
 // API Response Types
@@ -194,8 +274,48 @@ export interface ExamListResponse {
   count: number;
 }
 
+export interface ExamJobResponse {
+  success: boolean;
+  job: ExamJob;
+}
+
+export interface ExamJobListResponse {
+  success: boolean;
+  jobs: ExamJob[];
+}
+
 export interface GradingResponse {
   success: boolean;
   grading: GradingResult;
+}
+
+export interface GradingJobResponse {
+  success: boolean;
+  submission_id: string;
+  job: GradingJob;
+}
+
+export interface GradingJobListResponse {
+  success: boolean;
+  jobs: GradingJob[];
+}
+
+export interface BetaStatusResponse {
+  status: ServiceStatus;
+  allowed_emails: string[];
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+
+export interface WaitlistJoinPayload {
+  email: string;
+  note?: string;
+}
+
+export interface WaitlistJoinResponse {
+  success: boolean;
+  already_allowed?: boolean;
+  already_pending?: boolean;
+  message: string;
 }
 

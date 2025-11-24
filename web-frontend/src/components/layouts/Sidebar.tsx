@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Group } from "@/types/api";
 import { GroupsSection } from "./GroupsSection";
 import { SidebarUserProfile } from "./SidebarUserProfile";
+import { useTranslations } from "next-intl";
 
 interface NavigationItem {
   name: string;
@@ -47,9 +48,10 @@ export function Sidebar({
   onSignOut,
 }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("sidebar");
 
   const navigation: NavigationItem[] = [
-    { name: "대시보드", href: "/dashboard", icon: Home },
+    { name: t("dashboard"), href: "/dashboard", icon: Home },
   ];
 
   return (

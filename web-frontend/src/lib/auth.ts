@@ -49,21 +49,28 @@ export async function signInWithGoogle() {
  * Sign out
  */
 export async function signOut() {
+  const isDev = process.env.NODE_ENV === 'development';
+  const hasFirebaseConfig = Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+  const forceDevAuth = process.env.NEXT_PUBLIC_FORCE_DEV_AUTH === 'true';
+  const shouldUseMockAuth = (isDev && !hasFirebaseConfig) || forceDevAuth;
+  const devSessionActive =
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem('dev-logged-in') === 'true';
+
   try {
-    // 개발 모드 체크
-    const isDev = process.env.NODE_ENV === 'development';
-    
-    if (isDev) {
-      // 개발 모드: sessionStorage 초기화
-      console.log('[signOut] Development mode - clearing session');
+    if (typeof window !== 'undefined') {
       sessionStorage.removeItem('dev-logged-in');
+    }
+
+    if (shouldUseMockAuth || (isDev && devSessionActive)) {
+      console.log('[signOut] Mock auth mode - session cleared');
       return { error: null };
     }
-    
-    // 프로덕션 모드: Firebase 로그아웃
+
     await firebaseSignOut(auth);
     return { error: null };
   } catch (error: any) {
+    console.error('[signOut] Failed:', error);
     return { error: error.message };
   }
 }

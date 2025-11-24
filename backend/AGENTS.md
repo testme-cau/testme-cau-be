@@ -127,7 +127,7 @@ be/
 | `OPENAI_API_KEY`                  | Yes      | -                        | OpenAI API key                                        |
 | `OPENAI_MODEL`                    | No       | `gpt-5`                  | OpenAI model name                                     |
 | `GOOGLE_API_KEY`                  | No       | -                        | Google AI API key (for Gemini)                        |
-| `GOOGLE_MODEL`                    | No       | `gemini-1.5-pro`         | Gemini model name                                     |
+| `GOOGLE_MODEL`                    | No       | `gemini-2.5-pro`         | Gemini model name                                     |
 | `DEFAULT_AI_PROVIDER`             | No       | `gpt`                    | Default AI provider: gpt or gemini                    |
 | `CORS_ORIGINS`                    | No       | `*`                      | Comma-separated CORS origins                          |
 | `EXAM_HISTORY_LIMIT`              | No       | `30`                     | Max graded submissions to analyze per PDF set         |
@@ -355,7 +355,7 @@ Handles Google Generative AI interactions for PDF processing.
 
 - **Gemini File API**: Uploads PDF for multimodal processing
 - **Direct PDF Reading**: Gemini reads and analyzes PDF content
-- Model: `gemini-1.5-pro` or `gemini-1.5-flash`
+- Model: `gemini-2.5-pro` or `gemini-2.5-flash`
 - Automatic cleanup: Deletes uploaded files after use
 - JSON response parsing with markdown extraction
 

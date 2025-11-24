@@ -168,6 +168,8 @@ class PDFInfo(BaseModel):
     size: int
     uploaded_at: datetime
     status: str
+    subject_id: Optional[str] = None
+    subject_name: Optional[str] = None
 
 
 class PDFListResponse(BaseModel):
@@ -241,6 +243,7 @@ class ExamInfo(BaseModel):
     created_at: datetime
     status: str
     ai_provider: Optional[str]
+    language: Optional[str] = None
 
 
 class ExamListResponse(BaseModel):
@@ -268,6 +271,66 @@ class ExamListResponse(BaseModel):
                 "count": 1
             }
         }
+
+
+class ExamJobInfo(BaseModel):
+    job_id: str
+    subject_id: str
+    status: str
+    pdf_ids: List[str]
+    num_questions: int
+    difficulty: str
+    ai_provider: Optional[str]
+    ai_model: Optional[str] = None
+    language: Optional[str] = None
+    progress_percentage: float = 0.0
+    estimated_duration_seconds: Optional[int]
+    exam_id: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    failed_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+
+
+class ExamJobResponse(BaseModel):
+    success: bool = True
+    job: ExamJobInfo
+
+
+class ExamJobListResponse(BaseModel):
+    success: bool = True
+    jobs: List[ExamJobInfo]
+
+
+class GradingJobInfo(BaseModel):
+    job_id: str
+    subject_id: str
+    exam_id: str
+    submission_id: str
+    status: str
+    total_questions: int
+    ai_provider: Optional[str]
+    progress_percentage: float = 0.0
+    estimated_duration_seconds: Optional[int]
+    error_message: Optional[str] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    failed_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+
+
+class GradingJobListResponse(BaseModel):
+    success: bool = True
+    jobs: List[GradingJobInfo]
+
+
+class GradingJobResponse(BaseModel):
+    success: bool = True
+    submission_id: str
+    job: GradingJobInfo
 
 
 class GradingResponse(BaseModel):

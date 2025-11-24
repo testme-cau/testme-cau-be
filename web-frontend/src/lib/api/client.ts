@@ -2,6 +2,10 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { auth } from '@/lib/firebase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const DEV_AUTH_TOKEN =
+  process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
+const FORCE_DEV_AUTH =
+  process.env.NEXT_PUBLIC_FORCE_DEV_AUTH === 'true';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -16,10 +20,13 @@ apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     // Development mode: Use dev token if dev-logged-in is set
     const isDev = process.env.NODE_ENV === 'development';
-    const devLoggedIn = typeof window !== 'undefined' && sessionStorage.getItem('dev-logged-in') === 'true';
+    const devLoggedIn =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('dev-logged-in') === 'true';
+    const useDevBypass = devLoggedIn || FORCE_DEV_AUTH;
     
-    if (isDev && devLoggedIn) {
-      config.headers.Authorization = `Bearer dev-token-123`;
+    if (isDev && useDevBypass) {
+      config.headers.Authorization = `Bearer ${DEV_AUTH_TOKEN}`;
       return config;
     }
     
@@ -57,6 +64,14 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
         } else if (isDev) {
           console.log('[API Client] 401 error in development mode - redirect disabled');
+        }
+      }
+
+      if (status === 403) {
+        const detail = data?.detail || data?.error;
+        if (detail === 'closed_beta_not_allowed' && typeof window !== 'undefined') {
+          console.warn('[API Client] Closed beta access denied, redirecting to waitlist.');
+          window.location.href = '/waitlist?reason=beta';
         }
       }
       

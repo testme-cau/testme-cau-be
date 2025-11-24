@@ -510,13 +510,8 @@ export default function ExamPage() {
 
             {/* Action Buttons */}
             <div className="flex justify-center gap-3">
-              <Link href={`/dashboard/subjects/${subjectId}/exams`}>
-                <Button size="lg">시험 목록</Button>
-              </Link>
               <Link href={`/dashboard/subjects/${subjectId}`}>
-                <Button variant="outline" size="lg">
-                  과목 페이지
-                </Button>
+                <Button size="lg">과목으로 돌아가기</Button>
               </Link>
             </div>
           </div>
@@ -537,11 +532,8 @@ export default function ExamPage() {
                 {submissionResult?.error_message || "채점 중 오류가 발생했습니다."}
               </p>
               <div className="mt-6 flex justify-center gap-3">
-                <Link href={`/dashboard/subjects/${subjectId}/exams`}>
-                  <Button>시험 목록</Button>
-                </Link>
                 <Link href={`/dashboard/subjects/${subjectId}`}>
-                  <Button variant="outline">과목 페이지</Button>
+              <Button>과목으로 돌아가기</Button>
                 </Link>
               </div>
             </Card>

@@ -11,7 +11,10 @@ from app.services.ai_factory import get_ai_service, get_supported_providers
 async def get_ai_service_dependency(
     ai_provider: Optional[str] = Query(
         default=None,
-        description="AI provider to use (gpt or gemini). If not specified, uses default from settings."
+        description=(
+            "AI provider to use (gpt or gemini). "
+            "If omitted, admin dashboard configuration is used."
+        ),
     )
 ) -> AIServiceInterface:
     """

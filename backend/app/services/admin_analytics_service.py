@@ -3,7 +3,7 @@ Analytics helper for admin dashboard KPIs.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 
 from firebase_admin import firestore
@@ -15,11 +15,26 @@ def _to_datetime(value):
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value
+        return _normalize_datetime(value)
+    if isinstance(value, str):
+        try:
+            # Support ISO 8601 strings (with optional Z suffix)
+            normalized = value.replace("Z", "+00:00")
+            return _normalize_datetime(datetime.fromisoformat(normalized))
+        except ValueError:
+            return None
     try:
-        return value.to_datetime()
+        return _normalize_datetime(value.to_datetime())
     except AttributeError:
         return None
+
+
+def _normalize_datetime(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class AdminAnalyticsService:
@@ -43,7 +58,7 @@ class AdminAnalyticsService:
         total_exams = 0
         total_pdfs = 0
         mau_count = 0
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         mau_cutoff = now - timedelta(days=30)
 
         for doc in user_docs:

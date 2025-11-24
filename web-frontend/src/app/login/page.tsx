@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,18 +9,47 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Logo } from "@/components/ui/logo";
-import { Brain, Zap, Target, ArrowRight, Code, LogOut } from "lucide-react";
+import { Brain, Zap, Target, ArrowRight, Code, LogOut, ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { fetchBetaStatus, requestWaitlistAccess } from "@/lib/api/system";
+import type { BetaStatusResponse } from "@/types/api";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [betaStatus, setBetaStatus] = useState<BetaStatusResponse | null>(null);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistNote, setWaitlistNote] = useState('');
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const isDev = process.env.NODE_ENV === 'development';
+  const betaStatusLoaded = betaStatus !== null;
+  const isClosedBeta = betaStatus?.status === 'closed_beta';
+  const allowedEmails = betaStatus?.allowed_emails?.map((email) => email.toLowerCase()) ?? [];
+  const isAllowedUser = !!(user?.email && allowedEmails.includes(user.email.toLowerCase()));
+  const showWaitlistCard = Boolean(
+    betaStatusLoaded && isClosedBeta && !isAllowedUser
+  );
+
+  useEffect(() => {
+    fetchBetaStatus()
+      .then(setBetaStatus)
+      .catch(() => {
+        /* 무시 */
+      });
+  }, []);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
+      if (isClosedBeta) {
+        toast({
+          title: "현재 클로즈베타 진행중",
+          description: "허용된 이메일만 로그인 가능합니다. 초대 메일을 받지 못했다면 아래에서 신청해주세요.",
+        });
+      }
       const { user, error } = await signInWithGoogle();
       if (error) {
         toast({
@@ -71,6 +100,54 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleWaitlistSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!waitlistEmail.trim()) {
+      toast({
+        title: "이메일을 입력해주세요",
+        description: "초대 요청을 위해 이메일 주소가 필요합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWaitlistSubmitting(true);
+    try {
+      const response = await requestWaitlistAccess({
+        email: waitlistEmail,
+        note: waitlistNote || undefined,
+      });
+      toast({
+        title: "신청 완료",
+        description:
+          response.message ||
+          (response.already_allowed
+            ? "이미 허용된 이메일입니다. 바로 로그인해보세요."
+            : "승인 대기 목록에 등록되었습니다."),
+      });
+      if (!response.already_allowed) {
+        setWaitlistEmail('');
+        setWaitlistNote('');
+      }
+    } catch (error: any) {
+      toast({
+        title: "신청 실패",
+        description: error?.message || "대기열 신청 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setWaitlistSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authLoading || !user || !betaStatusLoaded) return;
+
+    if (!isClosedBeta || isAllowedUser) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, user, betaStatusLoaded, isClosedBeta, isAllowedUser, router]);
 
   if (authLoading) {
     return (
@@ -266,6 +343,51 @@ export default function LoginPage() {
                   Google 계정으로 간편하게 시작하세요
                 </motion.p>
               </div>
+
+              {showWaitlistCard && (
+                <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/80 p-5 text-amber-900">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="w-5 h-5 mt-1 text-amber-500" />
+                    <div>
+                      <p className="font-semibold">현재 클로즈베타 진행 중! 곧 오픈됩니다.</p>
+                      <p className="text-sm mt-1">
+                        초대가 필요하시면 아래에 이메일을 남겨주세요.
+                      </p>
+                    </div>
+                  </div>
+                  <form className="mt-4 space-y-3" onSubmit={handleWaitlistSubmit}>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={waitlistEmail}
+                      onChange={(e) => setWaitlistEmail(e.target.value)}
+                      className="h-11 bg-white/80"
+                    />
+                    <Textarea
+                      placeholder="간단한 소개나 참고 메시지 (선택)"
+                      value={waitlistNote}
+                      onChange={(e) => setWaitlistNote(e.target.value)}
+                      className="bg-white/80"
+                      rows={2}
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="w-full border-amber-400 text-amber-700 hover:bg-amber-100"
+                      disabled={waitlistSubmitting}
+                    >
+                      {waitlistSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          신청 중...
+                        </>
+                      ) : (
+                        "클로즈베타 초대 요청"
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              )}
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

@@ -2,7 +2,7 @@
 Exam routes (exam generation and management) - Subject-based structure
 """
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Body, BackgroundTasks
 
 from app.dependencies.auth import get_current_user
@@ -11,7 +11,15 @@ from app.dependencies.service import get_exam_service
 from app.services.ai_service_interface import AIServiceInterface
 from app.services.exam_service import ExamService
 from app.models.requests import ExamGenerationRequest
-from app.models.responses import ExamResponse, ExamListResponse, ExamInfo
+from app.models.responses import (
+    ExamResponse,
+    ExamListResponse,
+    ExamInfo,
+    ExamJobResponse,
+    ExamJobListResponse,
+    GradingJobResponse,
+    GradingJobListResponse,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +27,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["exam"])
 
 
-@router.post("/subjects/{subject_id}/exams/generate", response_model=ExamResponse, status_code=status.HTTP_202_ACCEPTED)
+def _get_ai_model_name(ai_service: AIServiceInterface) -> Optional[str]:
+    """Best-effort extraction of the concrete model name from the AI service."""
+    for attr in ("model_name", "model"):
+        value = getattr(ai_service, attr, None)
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped:
+                return stripped
+    return None
+
+
+@router.post(
+    "/subjects/{subject_id}/exams/generate",
+    response_model=ExamJobResponse,
+    status_code=status.HTTP_202_ACCEPTED
+)
 async def generate_exam(
     background_tasks: BackgroundTasks,
     subject_id: str = Path(..., description="Subject ID"),
@@ -53,32 +76,73 @@ async def generate_exam(
     """
     logger.info(f"Received async exam generation request for subject {subject_id}")
     
-    # Create placeholder exam immediately
-    placeholder_exam = exam_service.create_exam_placeholder(
+    ai_model_name = _get_ai_model_name(ai_service)
+
+    # Create exam generation job
+    job = exam_service.enqueue_exam_generation_job(
         user['uid'],
         subject_id,
         request,
-        ai_service.provider_name
+        ai_service.provider_name,
+        ai_model_name
     )
     
     # Schedule background task for actual generation
     background_tasks.add_task(
-        exam_service.generate_exam_background,
+        exam_service.process_exam_generation_job,
         user['uid'],
         subject_id,
-        placeholder_exam['exam_id'],
+        job['job_id'],
         request,
-        ai_service.provider_name,  # Pass provider name, not instance
-        'ko'
+        ai_service.provider_name,
+        job.get('language'),
+        ai_model_name
     )
     
-    logger.info(f"Placeholder exam created with ID {placeholder_exam['exam_id']}, background generation scheduled")
+    logger.info(f"Exam generation job created with ID {job['job_id']}, background generation scheduled")
     
-    # Return placeholder exam
-    return ExamResponse(
-        success=True,
-        exam=placeholder_exam
-    )
+    return ExamJobResponse(success=True, job=job)
+
+
+@router.get(
+    "/subjects/{subject_id}/exam-jobs",
+    response_model=ExamJobListResponse
+)
+async def list_exam_jobs(
+    subject_id: str = Path(..., description="Subject ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    jobs = exam_service.list_exam_jobs(user['uid'], subject_id)
+    return {"success": True, "jobs": jobs}
+
+
+@router.get(
+    "/subjects/{subject_id}/exam-jobs/{job_id}",
+    response_model=ExamJobResponse
+)
+async def get_exam_job(
+    subject_id: str = Path(..., description="Subject ID"),
+    job_id: str = Path(..., description="Job ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    job = exam_service.get_exam_job(user['uid'], subject_id, job_id)
+    return {"success": True, "job": job}
+
+
+@router.delete(
+    "/subjects/{subject_id}/exam-jobs/{job_id}",
+    response_model=ExamJobResponse
+)
+async def cancel_exam_job(
+    subject_id: str = Path(..., description="Subject ID"),
+    job_id: str = Path(..., description="Job ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    job = exam_service.cancel_exam_job(user['uid'], subject_id, job_id)
+    return {"success": True, "job": job}
 
 
 @router.get("/subjects/{subject_id}/exams/{exam_id}", response_model=Dict[str, Any])
@@ -153,8 +217,12 @@ async def delete_exam(
     return None
 
 
-@router.post("/subjects/{subject_id}/exams/{exam_id}/submit")
+@router.post(
+    "/subjects/{subject_id}/exams/{exam_id}/submit",
+    response_model=GradingJobResponse
+)
 async def submit_exam(
+    background_tasks: BackgroundTasks,
     subject_id: str = Path(..., description="Subject ID"),
     exam_id: str = Path(..., description="Exam ID"),
     answers: List[Dict[str, Any]] = Body(..., description="List of answers"),
@@ -172,23 +240,70 @@ async def submit_exam(
     Returns:
         Submission ID, status, and grading result (if completed)
     """
-    result = exam_service.submit_and_grade_exam(
+    result = exam_service.submit_exam_async(
         user['uid'],
         subject_id,
         exam_id,
         answers,
         ai_service
     )
+
+    background_tasks.add_task(
+        exam_service.process_grading_job,
+        user['uid'],
+        subject_id,
+        result['job']['job_id'],
+        exam_id,
+        result['submission_id'],
+        ai_service.provider_name
+    )
     
-    return {
-        'success': True,
-        'submission_id': result['submission_id'],
-        'status': result['status'],
-        'grading_result': result.get('grading_result'),
-        'error_message': result.get('error_message'),
-        'submitted_at': result['submitted_at'],
-        'graded_at': result.get('graded_at')
-    }
+    return GradingJobResponse(
+        success=True,
+        submission_id=result['submission_id'],
+        job=result['job']
+    )
+
+
+@router.get(
+    "/subjects/{subject_id}/grading-jobs",
+    response_model=GradingJobListResponse
+)
+async def list_grading_jobs(
+    subject_id: str = Path(..., description="Subject ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    jobs = exam_service.list_grading_jobs(user['uid'], subject_id)
+    return {"success": True, "jobs": jobs}
+
+
+@router.get(
+    "/subjects/{subject_id}/grading-jobs/{job_id}",
+    response_model=GradingJobResponse
+)
+async def get_grading_job(
+    subject_id: str = Path(..., description="Subject ID"),
+    job_id: str = Path(..., description="Job ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    job = exam_service.get_grading_job(user['uid'], subject_id, job_id)
+    return {"success": True, "job": job, "submission_id": job.get('submission_id', '')}
+
+
+@router.delete(
+    "/subjects/{subject_id}/grading-jobs/{job_id}",
+    response_model=GradingJobResponse
+)
+async def cancel_grading_job(
+    subject_id: str = Path(..., description="Subject ID"),
+    job_id: str = Path(..., description="Job ID"),
+    user: Dict[str, Any] = Depends(get_current_user),
+    exam_service: ExamService = Depends(get_exam_service)
+):
+    job = exam_service.cancel_grading_job(user['uid'], subject_id, job_id)
+    return {"success": True, "job": job, "submission_id": job.get('submission_id', '')}
 
 
 @router.get("/subjects/{subject_id}/exams/{exam_id}/submission")

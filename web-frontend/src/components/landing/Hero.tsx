@@ -87,11 +87,7 @@ export function Hero() {
             className="text-xl md:text-2xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed"
           >
             {t.rich('subtitle', {
-              br: () => (
-                <>
-                  <br />
-                </>
-              ),
+              br: () => <br />,
             })}
           </motion.p>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
@@ -11,9 +11,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { getSubjects, deleteSubject } from "@/lib/api/subjects";
 import { Subject } from "@/types/api";
 import { Plus, BookOpen, FileText, ClipboardList, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function DashboardPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -24,12 +26,11 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const selectedGroup = searchParams.get("group");
+  const t = useTranslations("dashboard");
+  const commonT = useTranslations("common");
+  const { user, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const subjectsData = await getSubjects();
       // Filter out subjects with empty subject_id
@@ -37,14 +38,19 @@ export default function DashboardPage() {
       setSubjects(validSubjects);
     } catch (error: any) {
       toast({
-        title: "데이터 로드 실패",
+        title: t("loadFailureTitle"),
         description: error.message,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, t]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    loadData();
+  }, [authLoading, user, loadData]);
 
   const loadSubjects = async () => {
     try {
@@ -54,7 +60,7 @@ export default function DashboardPage() {
       setSubjects(validSubjects);
     } catch (error: any) {
       toast({
-        title: "과목 로드 실패",
+        title: t("subjectLoadFailureTitle"),
         description: error.message,
         variant: "destructive",
       });
@@ -82,14 +88,16 @@ export default function DashboardPage() {
     try {
       await deleteSubject(subjectToDelete.subject_id);
       toast({
-        title: "과목 삭제 완료",
-        description: `${subjectToDelete.name} 과목이 삭제되었습니다.`,
+        title: t("deleteSuccessTitle"),
+        description: t("deleteSuccessDescription", {
+          name: subjectToDelete.name,
+        }),
       });
       // Reload subjects
       await loadSubjects();
     } catch (error: any) {
       toast({
-        title: "과목 삭제 실패",
+        title: t("deleteFailureTitle"),
         description: error.message,
         variant: "destructive",
       });
@@ -107,15 +115,13 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">대시보드</h1>
-              <p className="mt-2 text-gray-600">
-                과목을 선택하여 PDF를 업로드하고 시험을 생성하세요
-              </p>
+              <h1 className="text-3xl font-bold">{t("headerTitle")}</h1>
+              <p className="mt-2 text-gray-600">{t("headerSubtitle")}</p>
             </div>
             <Link href="/dashboard/subjects/new">
               <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all">
                 <Plus className="mr-2 h-4 w-4" />
-                새 과목 추가
+                {t("addSubjectButton")}
               </Button>
             </Link>
           </div>
@@ -128,17 +134,17 @@ export default function DashboardPage() {
           ) : filteredSubjects.length === 0 ? (
             <EmptyState
               icon={<BookOpen className="h-12 w-12 text-emerald-600" />}
-              title={selectedGroup ? "이 그룹에 과목이 없습니다" : "과목이 없습니다"}
+              title={selectedGroup ? t("emptyTitleGroup") : t("emptyTitle")}
               description={
                 selectedGroup
-                  ? "다른 그룹을 선택하거나 새 과목을 추가하세요"
-                  : "첫 과목을 추가하여 시작하세요"
+                  ? t("emptyDescriptionGroup")
+                  : t("emptyDescription")
               }
               action={
                 <Link href="/dashboard/subjects/new">
                   <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all">
                     <Plus className="mr-2 h-4 w-4" />
-                    과목 추가
+                    {t("emptyAction")}
                   </Button>
                 </Link>
               }
@@ -154,7 +160,7 @@ export default function DashboardPage() {
                   <button
                     onClick={(e) => handleDeleteClick(subject, e)}
                     className="absolute top-4 right-4 z-10 p-2 rounded-lg bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 shadow-sm transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="과목 삭제"
+                    aria-label={t("deleteActionLabel")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -191,11 +197,15 @@ export default function DashboardPage() {
                       <div className="mt-4 flex items-center gap-4 border-t pt-4 text-sm">
                         <div className="flex items-center gap-1">
                           <FileText className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">{subject.pdf_count || 0} PDFs</span>
+                          <span className="text-gray-600">
+                            {commonT("pdfCount", { count: subject.pdf_count || 0 })}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <ClipboardList className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">{subject.exam_count || 0} 시험</span>
+                          <span className="text-gray-600">
+                            {commonT("examCount", { count: subject.exam_count || 0 })}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -210,11 +220,13 @@ export default function DashboardPage() {
         <ConfirmDialog
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
-          title="과목 삭제"
-          description={`정말로 "${subjectToDelete?.name}" 과목을 삭제하시겠습니까? 이 과목에 속한 모든 PDF와 시험도 함께 삭제됩니다.`}
+          title={t("deleteDialogTitle")}
+          description={t("deleteDialogDescription", {
+            name: subjectToDelete?.name ?? "",
+          })}
           onConfirm={handleDeleteConfirm}
-          confirmText="삭제"
-          cancelText="취소"
+          confirmText={commonT("delete")}
+          cancelText={commonT("cancel")}
           variant="destructive"
           loading={deleting}
         />

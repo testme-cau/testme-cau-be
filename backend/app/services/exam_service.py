@@ -2,7 +2,7 @@
 Exam service for business logic related to exam generation and grading
 """
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -18,10 +18,13 @@ from app.services.ai_service_interface import AIServiceInterface
 from app.models.domain import Exam
 from app.models.requests import ExamGenerationRequest
 from app.utils.exam_validator import validate_exam_response
-from app.utils.exam_utils import compute_pdf_signature, normalize_pdf_ids
+from app.utils.exam_utils import (
+    compute_pdf_signature,
+    normalize_exam_points,
+    normalize_pdf_ids,
+)
 
 from config import settings
-from app.utils.exam_utils import compute_pdf_signature, normalize_pdf_ids
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,13 @@ class ExamService:
         return max(MIN_GRADING_SECONDS, base)
 
     @staticmethod
+    def _safe_float(value: Any) -> float:
+        try:
+            return float(value or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
     def _serialize_timestamp(value: Any) -> Optional[str]:
         if value is None:
             return None
@@ -76,6 +86,29 @@ class ExamService:
         except AttributeError:
             return str(value)
 
+    @staticmethod
+    def _ensure_utc_datetime(value: Any, default: Optional[datetime] = None) -> datetime:
+        """
+        Normalize Firestore Timestamp/datetime to timezone-aware UTC datetime.
+        Falls back to current UTC time when conversion fails.
+        """
+        fallback = default or datetime.now(timezone.utc)
+        if value is None:
+            return fallback
+
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
+
+        try:
+            converted = value.to_datetime()  # type: ignore[attr-defined]
+            if converted.tzinfo is None:
+                return converted.replace(tzinfo=timezone.utc)
+            return converted.astimezone(timezone.utc)
+        except AttributeError:
+            return fallback
+
     def _calculate_time_progress(self, job: Dict[str, Any]) -> float:
         status_value = job.get('status', 'pending')
         if status_value == 'completed':
@@ -86,12 +119,9 @@ class ExamService:
         started_at = job.get('started_at')
         if not started_at:
             return 5.0
-        if not isinstance(started_at, datetime):
-            try:
-                started_at = started_at.to_datetime()  # type: ignore
-            except AttributeError:
-                started_at = datetime.utcnow()
-        elapsed = (datetime.utcnow() - started_at).total_seconds()
+        started_at = self._ensure_utc_datetime(started_at)
+        now_utc = datetime.now(timezone.utc)
+        elapsed = (now_utc - started_at).total_seconds()
         progress = (elapsed / estimated) * 100
         return max(5.0, min(progress, 95.0))
 
@@ -102,6 +132,7 @@ class ExamService:
         job_copy['started_at'] = self._serialize_timestamp(job_copy.get('started_at'))
         job_copy['completed_at'] = self._serialize_timestamp(job_copy.get('completed_at'))
         job_copy['failed_at'] = self._serialize_timestamp(job_copy.get('failed_at'))
+        job_copy['cancelled_at'] = self._serialize_timestamp(job_copy.get('cancelled_at'))
         job_copy['progress_percentage'] = round(
             job_copy.get('progress_percentage', self._calculate_time_progress(job_copy)), 2
         )
@@ -109,12 +140,10 @@ class ExamService:
     
     @staticmethod
     def _ensure_datetime(value: Any) -> datetime:
-        if isinstance(value, datetime):
-            return value
-        try:
-            return value.to_datetime()  # type: ignore[attr-defined]
-        except AttributeError:
-            return datetime.min
+        return ExamService._ensure_utc_datetime(
+            value,
+            default=datetime.min.replace(tzinfo=timezone.utc)
+        )
     
     def _fetch_previous_context(
         self,
@@ -235,6 +264,45 @@ class ExamService:
         
         return previous_context
 
+    def _resolve_exam_title(self, exam_data: Dict[str, Any]) -> str:
+        """
+        Determine the exam title, falling back to inferred topics without truncation.
+        """
+        title = (exam_data.get('title') or '').strip()
+        if title:
+            return title
+        
+        topics: List[str] = []
+        for question in exam_data.get('questions', []):
+            topic = (question.get('topic') or '').strip()
+            if topic and topic not in topics:
+                topics.append(topic)
+            if len(topics) >= 3:
+                break
+        
+        if topics:
+            return " 및 ".join(topics)
+        
+        return "AI 생성 시험"
+
+    @staticmethod
+    def _resolve_language(
+        subject_data: Optional[Dict[str, Any]],
+        preferred_language: Optional[str],
+        fallback_language: str = "ko"
+    ) -> str:
+        """
+        Determine which language should be used for generation/grading.
+        Priority: explicit preference -> subject -> fallback.
+        """
+        if preferred_language:
+            return preferred_language.lower()
+        if subject_data:
+            subject_language = (subject_data.get('language_preference') or '').strip()
+            if subject_language:
+                return subject_language.lower()
+        return (fallback_language or 'ko').lower()
+
     # ----------------------------
     # Exam generation jobs
     # ----------------------------
@@ -243,10 +311,12 @@ class ExamService:
         user_id: str,
         subject_id: str,
         request: ExamGenerationRequest,
-        ai_provider_name: str
+        ai_provider_name: str,
+        ai_model_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create a generation job document."""
-        self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
+        subject_data = self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
+        final_language = self._resolve_language(subject_data, request.language, 'ko')
         job_data = {
             'user_id': user_id,
             'subject_id': subject_id,
@@ -255,6 +325,8 @@ class ExamService:
             'num_questions': request.num_questions,
             'difficulty': request.difficulty,
             'ai_provider': ai_provider_name,
+            'ai_model': ai_model_name,
+            'language': final_language,
             'status': 'pending',
             'progress_percentage': 0.0,
             'estimated_duration_seconds': self._estimate_generation_duration(len(request.pdf_ids), request.num_questions)
@@ -262,22 +334,31 @@ class ExamService:
         job = self.exam_job_repo.create_job(user_id, subject_id, job_data)
         return self._format_job(job)
 
-    def process_exam_generation_job(
+    async def process_exam_generation_job(
         self,
         user_id: str,
         subject_id: str,
         job_id: str,
         request: ExamGenerationRequest,
         ai_provider_name: str,
-        language: str = 'ko'
+        language: Optional[str] = None,
+        ai_model_name: Optional[str] = None
     ) -> None:
         """Background worker that generates the exam and updates job status."""
         try:
+            subject_data = self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
+            preferred_language = request.language or language
+            final_language = self._resolve_language(subject_data, preferred_language, preferred_language or 'ko')
+
             self.exam_job_repo.update_job(
                 user_id, subject_id, job_id,
-                {'status': 'processing', 'started_at': datetime.utcnow(), 'progress_percentage': 10.0}
+                {
+                    'status': 'processing',
+                    'started_at': datetime.now(timezone.utc),
+                    'progress_percentage': 10.0,
+                    'language': final_language
+                }
             )
-            subject_data = self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
 
             pdf_bytes_list = []
             for pdf_id in request.pdf_ids:
@@ -285,15 +366,13 @@ class ExamService:
                 pdf_bytes = self.pdf_service.download_pdf_bytes(user_id, subject_id, pdf_id)
                 pdf_bytes_list.append((pdf_bytes, pdf_data.original_filename))
 
-            final_language = subject_data.get('language_preference', language)
-
             previous_context = self._fetch_previous_context(user_id, subject_id, request.pdf_ids)
 
             from app.services.ai_factory import get_ai_service
             ai_service = get_ai_service(ai_provider_name)
 
             if len(pdf_bytes_list) == 1:
-                generation_result = ai_service.generate_exam_from_pdf(
+                generation_result = await ai_service.generate_exam_from_pdf(
                     pdf_bytes_list[0][0],
                     pdf_bytes_list[0][1],
                     num_questions=request.num_questions,
@@ -302,7 +381,7 @@ class ExamService:
                     previous_context=previous_context
                 )
             else:
-                generation_result = ai_service.generate_exam_from_multiple_pdfs(
+                generation_result = await ai_service.generate_exam_from_multiple_pdfs(
                     pdf_bytes_list,
                     num_questions=request.num_questions,
                     difficulty=request.difficulty,
@@ -315,16 +394,9 @@ class ExamService:
 
             raw_exam_data = generation_result['exam']
             exam_data = validate_exam_response(raw_exam_data, request.num_questions)
+            exam_data = normalize_exam_points(exam_data)
 
-            title = exam_data.get('title') or 'Untitled Exam'
-            if title == 'Untitled Exam':
-                topics = []
-                for question in exam_data.get('questions', [])[:3]:
-                    topic = question.get('topic')
-                    if topic and topic not in topics:
-                        topics.append(topic)
-                if topics:
-                    title = ' 및 '.join(topics)[:50]
+            title = self._resolve_exam_title(exam_data)
 
             exam_record = {
                 'subject_id': subject_id,
@@ -339,7 +411,8 @@ class ExamService:
                 'num_questions': request.num_questions,
                 'difficulty': request.difficulty,
                 'status': 'active',
-                'ai_provider': ai_provider_name
+                'ai_provider': ai_provider_name,
+                'language': final_language
             }
 
             created_exam = self.exam_repo.create_exam(user_id, subject_id, exam_record)
@@ -350,7 +423,7 @@ class ExamService:
                 job_id,
                 {
                     'status': 'completed',
-                    'completed_at': datetime.utcnow(),
+                    'completed_at': datetime.now(timezone.utc),
                     'progress_percentage': 100.0,
                     'exam_id': created_exam['exam_id']
                 }
@@ -363,7 +436,7 @@ class ExamService:
                 job_id,
                 {
                     'status': 'failed',
-                    'failed_at': datetime.utcnow(),
+                    'failed_at': datetime.now(timezone.utc),
                     'progress_percentage': 0.0,
                     'error_message': str(e)
                 }
@@ -400,7 +473,7 @@ class ExamService:
             job_id,
             {
                 'status': 'cancelled',
-                'cancelled_at': datetime.utcnow(),
+                'cancelled_at': datetime.now(timezone.utc),
                 'progress_percentage': 0.0
             }
         )
@@ -420,14 +493,27 @@ class ExamService:
         question_points_map = {q.get('id'): float(q.get('points', 0)) for q in questions}
         question_map = {q.get('id'): q for q in questions}
         answer_map = {a.get('question_id'): (a.get('answer') or "").strip() for a in answers}
-        total_points = sum(question_points_map.values()) or float(grading_result.get('max_score') or 0)
+        exam_points_total = sum(question_points_map.values())
+        ai_points_total = sum(
+            float(result.get('max_points', 0) or 0)
+            for result in grading_result.get('question_results', [])
+        )
+        exam_total_points = self._safe_float(exam_data.get('total_points'))
+        source_total_points = exam_points_total or ai_points_total or self._safe_float(
+            grading_result.get('max_score')
+        )
+        if source_total_points <= 0:
+            source_total_points = 0.0
+        target_total_points = exam_total_points or source_total_points
+        scaling_factor = (target_total_points / source_total_points) if source_total_points > 0 else 1.0
 
         normalized_results = []
         total_score = 0.0
 
         for result in grading_result.get('question_results', []):
             q_id = result.get('question_id')
-            max_points = question_points_map.get(q_id, float(result.get('max_points', 0)))
+            base_max_points = question_points_map.get(q_id, float(result.get('max_points', 0)))
+            max_points = float(base_max_points or 0)
             score = float(result.get('score', 0))
 
             question = question_map.get(q_id)
@@ -444,23 +530,26 @@ class ExamService:
 
             if max_points > 0 and score > max_points:
                 score = max_points
-            total_score += score
+
+            scaled_max_points = max_points * scaling_factor
+            scaled_score = score * scaling_factor
+            total_score += scaled_score
 
             normalized_results.append({
                 **result,
-                'max_points': max_points,
-                'score': score,
+                'max_points': round(scaled_max_points, 2),
+                'score': round(scaled_score, 2),
             })
 
-        if total_points <= 0:
-            total_points = float(grading_result.get('max_score') or total_score or 1)
+        if target_total_points <= 0:
+            target_total_points = float(grading_result.get('max_score') or total_score or 1.0)
 
         normalized = {
             **grading_result,
             'question_results': normalized_results,
-            'total_score': total_score,
-            'max_score': total_points,
-            'percentage': (total_score / total_points * 100) if total_points else 0.0,
+            'total_score': round(total_score, 2),
+            'max_score': round(target_total_points, 2),
+            'percentage': (total_score / target_total_points * 100) if target_total_points else 0.0,
         }
         return normalized
 
@@ -487,7 +576,7 @@ class ExamService:
         job = self.grading_job_repo.create_job(user_id, subject_id, job_data)
         return self._format_job(job)
 
-    def process_grading_job(
+    async def process_grading_job(
         self,
         user_id: str,
         subject_id: str,
@@ -506,7 +595,11 @@ class ExamService:
                 user_id,
                 subject_id,
                 job_id,
-                {'status': 'processing', 'started_at': datetime.utcnow(), 'progress_percentage': 15.0}
+                {
+                    'status': 'processing',
+                    'started_at': datetime.now(timezone.utc),
+                    'progress_percentage': 15.0
+                }
             )
 
             exam_data = self.exam_repo.get_by_id_with_ownership(user_id, subject_id, exam_id)
@@ -519,14 +612,20 @@ class ExamService:
             pdf_bytes = self.pdf_service.download_pdf_bytes(user_id, subject_id, exam_data['pdf_id'])
             pdf_data = self.pdf_service.get_pdf(user_id, subject_id, exam_data['pdf_id'])
 
+            subject_data_for_language = None
+            if not exam_data.get('language'):
+                subject_data_for_language = self.subject_repo.get_by_id_with_ownership(subject_id, user_id)
+            exam_language = self._resolve_language(subject_data_for_language, exam_data.get('language'), 'ko')
+
             from app.services.ai_factory import get_ai_service
             ai_service = get_ai_service(ai_provider_name)
 
-            grading_result = ai_service.grade_exam_with_pdf(
+            grading_result = await ai_service.grade_exam_with_pdf(
                 pdf_bytes,
                 pdf_data.original_filename,
                 exam_data['questions'],
-                answers
+                answers,
+                language=exam_language
             )
 
             if grading_result['success']:
@@ -546,7 +645,7 @@ class ExamService:
                     job_id,
                     {
                         'status': 'completed',
-                        'completed_at': datetime.utcnow(),
+                        'completed_at': datetime.now(timezone.utc),
                         'progress_percentage': 100.0
                     }
                 )
@@ -565,7 +664,7 @@ class ExamService:
                     job_id,
                     {
                         'status': 'failed',
-                        'failed_at': datetime.utcnow(),
+                        'failed_at': datetime.now(timezone.utc),
                         'error_message': error_msg,
                         'progress_percentage': 0.0
                     }
@@ -578,7 +677,7 @@ class ExamService:
                 job_id,
                 {
                     'status': 'failed',
-                    'failed_at': datetime.utcnow(),
+                    'failed_at': datetime.now(timezone.utc),
                     'error_message': str(e),
                     'progress_percentage': 0.0
                 }
@@ -618,13 +717,17 @@ class ExamService:
             user_id,
             subject_id,
             job_id,
-            {'status': 'cancelled', 'cancelled_at': datetime.utcnow(), 'progress_percentage': 0.0}
+            {
+                'status': 'cancelled',
+                'cancelled_at': datetime.now(timezone.utc),
+                'progress_percentage': 0.0
+            }
         )
         job = self.grading_job_repo.get_job(user_id, subject_id, job_id)
         return self._format_job(job)
 
     
-    def generate_exam(
+    async def generate_exam(
         self,
         user_id: str,
         subject_id: str,
@@ -659,15 +762,16 @@ class ExamService:
             
             pdf_bytes_list.append((pdf_bytes, pdf_data.original_filename))
         
-        # Determine language (subject > user > default)
-        final_language = subject_data.get('language_preference', language)
+        # Determine language (request > subject > fallback)
+        preferred_language = request.language or language
+        final_language = self._resolve_language(subject_data, preferred_language, preferred_language or language)
         
         previous_context = self._fetch_previous_context(user_id, subject_id, request.pdf_ids)
         
         # Generate exam using appropriate AI service method
         if len(pdf_bytes_list) == 1:
             # Single PDF - use original method
-            generation_result = ai_service.generate_exam_from_pdf(
+            generation_result = await ai_service.generate_exam_from_pdf(
                 pdf_bytes_list[0][0],  # pdf_bytes
                 pdf_bytes_list[0][1],  # original_filename
                 num_questions=request.num_questions,
@@ -677,7 +781,7 @@ class ExamService:
             )
         else:
             # Multiple PDFs - use new method
-            generation_result = ai_service.generate_exam_from_multiple_pdfs(
+            generation_result = await ai_service.generate_exam_from_multiple_pdfs(
                 pdf_bytes_list,
                 num_questions=request.num_questions,
                 difficulty=request.difficulty,
@@ -698,6 +802,7 @@ class ExamService:
             exam_data = validate_exam_response(raw_exam_data, request.num_questions)
             if exam_data.get('validation_issues'):
                 logger.warning(f"Exam validation issues: {exam_data['validation_issues']}")
+            exam_data = normalize_exam_points(exam_data)
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -710,7 +815,7 @@ class ExamService:
         # Save exam to Firestore
         exam_record = {
             'subject_id': subject_id,
-            'title': exam_data.get('title', 'Untitled Exam'),  # AI-generated title with fallback
+            'title': self._resolve_exam_title(exam_data),  # AI-generated title with fallback
             'pdf_id': request.pdf_ids[0],  # First PDF for backward compatibility
             'pdf_ids': request.pdf_ids,  # New field: all PDFs
             'user_id': user_id,
@@ -722,7 +827,8 @@ class ExamService:
             'status': 'active',
             'ai_provider': ai_service.provider_name,
             'pdf_signature': pdf_signature,
-            'pdf_count': pdf_count
+            'pdf_count': pdf_count,
+            'language': final_language
         }
         
         created_exam = self.exam_repo.create_exam(user_id, subject_id, exam_record)
@@ -733,7 +839,8 @@ class ExamService:
             'total_points': created_exam['total_points'],
             'estimated_time': created_exam['estimated_time'],
             'created_at': created_exam.get('created_at'),
-            'ai_provider': created_exam['ai_provider']
+            'ai_provider': created_exam['ai_provider'],
+            'language': created_exam.get('language')
         }
     
     def get_exam(self, user_id: str, subject_id: str, exam_id: str) -> Exam:

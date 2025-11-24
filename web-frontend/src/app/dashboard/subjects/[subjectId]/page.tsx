@@ -54,6 +54,8 @@ export default function SubjectDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examToDelete, setExamToDelete] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [jobToCancel, setJobToCancel] = useState<ExamJob | null>(null);
+  const [cancelJobDialogOpen, setCancelJobDialogOpen] = useState(false);
 
   const prevExamJobCount = useRef(0);
   const prevGradingJobCount = useRef(0);
@@ -62,7 +64,7 @@ export default function SubjectDetailPage() {
     if (!subjectId) return;
     const data = await getExams(subjectId);
     setExams(data || []);
-  }, [subjectId, readLocalExamJobs]);
+  }, [subjectId]);
 
   const storageKey = `pendingExamJobs:${subjectId}`;
 
@@ -115,8 +117,8 @@ export default function SubjectDetailPage() {
       }
       prevExamJobCount.current = activeJobs.length;
       const localJobs = readLocalExamJobs();
-      const serverIds = new Set(activeJobs.map((job) => job.job_id));
-      const remainingLocal = localJobs.filter((job) => !serverIds.has(job.job_id));
+      const serverJobIds = new Set((jobs || []).map((job) => job.job_id));
+      const remainingLocal = localJobs.filter((job) => !serverJobIds.has(job.job_id));
       if (remainingLocal.length !== localJobs.length) {
         writeLocalExamJobs(remainingLocal);
       }
@@ -279,20 +281,44 @@ export default function SubjectDetailPage() {
   };
 
   const handleCancelExamJob = async (jobId: string) => {
-    if (!subjectId) return;
+    if (!subjectId) return false;
     try {
       await cancelExamJob(subjectId, jobId);
+      setExamJobs((prev) => prev.filter((job) => job.job_id !== jobId));
+      try {
+        const localJobs = readLocalExamJobs();
+        const updatedLocal = localJobs.filter((job) => job.job_id !== jobId);
+        writeLocalExamJobs(updatedLocal);
+      } catch (storageError) {
+        console.warn("Failed to sync pending jobs after cancel:", storageError);
+      }
       toast({
         title: "작업 취소됨",
         description: "시험 생성 작업이 취소되었습니다.",
       });
-      fetchExamJobs();
+      await fetchExamJobs();
+      return true;
     } catch (error: any) {
       toast({
         title: "작업 취소 실패",
         description: error.message,
         variant: "destructive",
       });
+      return false;
+    }
+  };
+
+  const handleCancelJobRequest = (job: ExamJob) => {
+    setJobToCancel(job);
+    setCancelJobDialogOpen(true);
+  };
+
+  const handleCancelJobConfirm = async () => {
+    if (!jobToCancel) return;
+    const success = await handleCancelExamJob(jobToCancel.job_id);
+    if (success) {
+      setCancelJobDialogOpen(false);
+      setJobToCancel(null);
     }
   };
 
@@ -406,7 +432,7 @@ export default function SubjectDetailPage() {
 
   const getButtonText = (exam: any) => {
     if (!exam.submission_status) {
-      return "시험 응시하기";
+      return "응시하기";
     }
     
     if (exam.submission_status === 'graded') {
@@ -418,6 +444,14 @@ export default function SubjectDetailPage() {
     }
     
     return "시험 보기";
+  };
+
+  const getActionButtonClassName = (exam: any) => {
+    if (!exam.submission_status) {
+      return "w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold shadow-lg shadow-emerald-200/60 transition-all hover:from-emerald-600 hover:to-teal-600 hover:shadow-emerald-300/80";
+    }
+
+    return "w-full";
   };
 
   const handleDeleteClick = (exam: Exam, e: React.MouseEvent) => {
@@ -460,6 +494,8 @@ export default function SubjectDetailPage() {
     acc[pdf.file_id] = count;
     return acc;
   }, {} as Record<string, number>);
+
+  const hasPdfs = pdfs.length > 0;
 
 
   if (loading) {
@@ -582,7 +618,7 @@ export default function SubjectDetailPage() {
                   jobs={examJobs}
                   pdfs={pdfs}
                   loading={examJobsLoading}
-                  onCancel={handleCancelExamJob}
+                  onCancel={handleCancelJobRequest}
                 />
               )}
 
@@ -595,11 +631,21 @@ export default function SubjectDetailPage() {
                 <EmptyState
                   icon={<ClipboardList className="h-12 w-12" />}
                   title="생성된 시험이 없습니다"
-                  description="PDF를 업로드하고 시험을 생성하세요"
+                  description={
+                    hasPdfs
+                      ? "업로드된 PDF를 기반으로 시험을 생성해보세요."
+                      : "PDF를 업로드하고 시험을 생성하세요."
+                  }
                   action={
-                    <Button onClick={() => setActiveTab("pdfs")}>
-                      PDF 업로드하기
-                    </Button>
+                    hasPdfs ? (
+                      <Link href={`/dashboard/subjects/${subjectId}/exams/new`}>
+                        <Button>시험 생성하기</Button>
+                      </Link>
+                    ) : (
+                      <Button onClick={() => setActiveTab("pdfs")}>
+                        PDF 업로드하기
+                      </Button>
+                    )
                   }
                 />
               ) : (
@@ -610,7 +656,19 @@ export default function SubjectDetailPage() {
                     const examPdfs = pdfs.filter((pdf) => examPdfIds.includes(pdf.file_id));
                     
                     return (
-                      <Card key={exam.exam_id} className="group transition-all hover:shadow-lg">
+                      <Card
+                        key={exam.exam_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`);
+                          }
+                        }}
+                        className="group cursor-pointer transition-all hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                      >
                         <div className="p-6">
                           {/* Header */}
                           <div className="mb-4 flex items-start justify-between">
@@ -674,7 +732,7 @@ export default function SubjectDetailPage() {
 
                           {/* Action Button */}
                           <Link href={`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`}>
-                            <Button className="w-full" size="sm">
+                            <Button className={getActionButtonClassName(exam)} size="sm">
                               {getButtonText(exam)}
                             </Button>
                           </Link>
@@ -710,6 +768,22 @@ export default function SubjectDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Cancel Job Confirmation */}
+        <ConfirmDialog
+          open={cancelJobDialogOpen}
+          onOpenChange={setCancelJobDialogOpen}
+          onConfirm={handleCancelJobConfirm}
+          title="생성 작업 취소"
+          description={
+            jobToCancel
+              ? `PDF ${jobToCancel.pdf_ids?.length || 0}개, ${jobToCancel.num_questions}문항 생성 작업을 취소할까요?`
+              : "선택한 시험 생성 작업을 취소할까요?"
+          }
+          confirmText="작업 취소"
+          cancelText="계속 진행"
+          variant="destructive"
+        />
 
         {/* Delete Confirmation Dialog */}
         <ConfirmDialog

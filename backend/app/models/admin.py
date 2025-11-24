@@ -50,9 +50,18 @@ class ParametersUpdateRequest(BaseModel):
 
 class AdminConfigResponse(BaseModel):
     """Response containing admin config payload."""
-
+    
     success: bool = True
     config: AdminConfig
+
+
+class BetaStatusResponse(BaseModel):
+    """Public status payload exposed to landing/login UI."""
+
+    status: ServiceStatus
+    allowed_emails: List[str] = Field(default_factory=list)
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
 
 
 class FirebaseUserPayload(BaseModel):
@@ -123,5 +132,53 @@ class AnalyticsSummaryResponse(BaseModel):
     success: bool = True
     summary: AnalyticsSummary
     users: List[UserAnalytics] = Field(default_factory=list)
+
+
+class WaitlistEntry(BaseModel):
+    """Waitlist entry for closed beta approvals."""
+
+    entry_id: str
+    email: str
+    note: Optional[str] = None
+    status: str = "pending"
+    requested_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+
+
+class WaitlistResponse(BaseModel):
+    """Response containing waitlist entries."""
+
+    success: bool = True
+    entries: List[WaitlistEntry] = Field(default_factory=list)
+
+
+class WaitlistActionRequest(BaseModel):
+    """Request body for approving or rejecting waitlist entries."""
+
+    entry_id: str
+
+
+class WaitlistJoinRequest(BaseModel):
+    """Public request to join the closed beta waitlist."""
+
+    email: str
+    note: Optional[str] = None
+
+    @validator("email")
+    def validate_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if "@" not in normalized:
+            raise ValueError("유효한 이메일 주소를 입력해주세요.")
+        return normalized
+
+
+class WaitlistJoinResponse(BaseModel):
+    """Response for waitlist join attempts."""
+
+    success: bool = True
+    already_allowed: bool = False
+    already_pending: bool = False
+    message: str = ""
 
 

@@ -7,7 +7,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.services.ai_service_interface import AIServiceInterface
 
@@ -25,8 +25,8 @@ class GPTService(AIServiceInterface):
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY not found in environment")
 
-        # Initialize OpenAI client (v1.x+ structure)
-        self.client = OpenAI(api_key=self.api_key)
+        # Initialize OpenAI client (async)
+        self.client = AsyncOpenAI(api_key=self.api_key)
 
         # Model configuration with fallback chain
         # TODO: Change back to gpt-5 when it's supported in Assistants API
@@ -125,7 +125,7 @@ class GPTService(AIServiceInterface):
             return data
 
     # ---------- internal chat helper ----------
-    def _create_chat_completion(self, *, model: str, messages, temperature: float, max_tokens: int, response_format):
+    async def _create_chat_completion(self, *, model: str, messages, temperature: float, max_tokens: int, response_format):
         """
         Create a chat completion. Handle gpt-5 parameter compatibility:
         - Prefer max_tokens (per latest sample)
@@ -133,9 +133,6 @@ class GPTService(AIServiceInterface):
         - If model rejects temperature, retry without temperature
         - For gpt-5, avoid response_format unless required by prompt
         """
-        def call(kwargs: Dict[str, Any]):
-            return self.client.chat.completions.create(**kwargs)
-
         # Base kwargs
         kwargs: Dict[str, Any] = {
             'model': model,
@@ -154,7 +151,7 @@ class GPTService(AIServiceInterface):
 
         # Try 1: as-is
         try:
-            return call(kwargs)
+            return await self.client.chat.completions.create(**kwargs)
         except Exception as e:
             msg = str(e)
             # Retry: if max_tokens unsupported → switch to max_completion_tokens
@@ -163,24 +160,24 @@ class GPTService(AIServiceInterface):
                 kwargs.pop('max_tokens', None)
                 kwargs['max_completion_tokens'] = max_tokens
                 try:
-                    return call(kwargs)
+                    return await self.client.chat.completions.create(**kwargs)
                 except Exception as e2:
                     msg2 = str(e2)
                     # If temperature unsupported → drop it and retry
                     if "Unsupported value: 'temperature'" in msg2:
                         self._log_warn(f"Model '{model}' rejected temperature; retrying without temperature")
                         kwargs.pop('temperature', None)
-                        return call(kwargs)
+                        return await self.client.chat.completions.create(**kwargs)
                     raise
             # Retry: temperature unsupported → drop it and retry
             if "Unsupported value: 'temperature'" in msg:
                 self._log_warn(f"Model '{model}' rejected temperature; retrying without temperature")
                 kwargs.pop('temperature', None)
-                return call(kwargs)
+                return await self.client.chat.completions.create(**kwargs)
             raise
 
     # ---------- internal chat helper with fallback ----------
-    def _chat_with_fallback(
+    async def _chat_with_fallback(
         self,
         messages: List[Dict[str, str]],
         *,
@@ -191,7 +188,7 @@ class GPTService(AIServiceInterface):
         last_error = None
         for model in self.model_candidates:
             try:
-                resp = self._create_chat_completion(
+                resp = await self._create_chat_completion(
                     model=model,
                     messages=messages,
                     temperature=temperature,
@@ -208,7 +205,7 @@ class GPTService(AIServiceInterface):
         raise last_error  # type: ignore[misc]
 
     # ---------- public methods ----------
-    def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium", language: str = "ko", previous_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    async def generate_exam_from_pdf(self, pdf_bytes: bytes, original_filename: str, num_questions: int = 10, difficulty: str = "medium", language: str = "ko", previous_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """
         Generate exam from PDF file using OpenAI File API.
         
@@ -228,7 +225,7 @@ class GPTService(AIServiceInterface):
             pdf_file = io.BytesIO(pdf_bytes)
             pdf_file.name = original_filename
             
-            file_response = self.client.files.create(
+            file_response = await self.client.files.create(
                 file=pdf_file,
                 purpose='assistants'
             )
@@ -333,7 +330,7 @@ class GPTService(AIServiceInterface):
                     "- Create NEW questions, not just rephrasing old ones\n"
                 )
             
-            assistant = self.client.beta.assistants.create(
+            assistant = await self.client.beta.assistants.create(
                 name="Exam Generator",
                 instructions=instructions,
                 model='gpt-4o',  # TODO: Use self.model_candidates[0] when gpt-5 is supported
@@ -342,7 +339,7 @@ class GPTService(AIServiceInterface):
             )
             
             # Create thread and attach file
-            thread = self.client.beta.threads.create(
+            thread = await self.client.beta.threads.create(
                 messages=[
                     {
                         "role": "user",
@@ -355,13 +352,13 @@ class GPTService(AIServiceInterface):
             )
             
             # Run assistant
-            run = self.client.beta.threads.runs.create_and_poll(
+            run = await self.client.beta.threads.runs.create_and_poll(
                 thread_id=thread.id,
                 assistant_id=assistant.id,
             )
             
             if run.status == 'completed':
-                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                messages = await self.client.beta.threads.messages.list(thread_id=thread.id)
                 response_content = messages.data[0].content[0].text.value
                 
                 # Parse JSON from response
@@ -377,8 +374,8 @@ class GPTService(AIServiceInterface):
                         raise ValueError(f"Could not parse JSON from response: {response_content[:200]}")
                 
                 # Cleanup
-                self.client.files.delete(file_id)
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.files.delete(file_id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 return {
                     'success': True,
@@ -387,8 +384,8 @@ class GPTService(AIServiceInterface):
                 }
             else:
                 # Cleanup on failure
-                self.client.files.delete(file_id)
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.files.delete(file_id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 raise Exception(f"Assistant run failed with status: {run.status}")
                 
@@ -399,7 +396,7 @@ class GPTService(AIServiceInterface):
                 'error': str(e),
             }
     
-    def generate_exam_from_multiple_pdfs(
+    async def generate_exam_from_multiple_pdfs(
         self,
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
@@ -428,7 +425,7 @@ class GPTService(AIServiceInterface):
                 pdf_file = io.BytesIO(pdf_bytes)
                 pdf_file.name = original_filename
                 
-                file_response = self.client.files.create(
+                file_response = await self.client.files.create(
                     file=pdf_file,
                     purpose='assistants'
                 )
@@ -533,7 +530,7 @@ class GPTService(AIServiceInterface):
                     "- Create NEW questions, not just rephrasing old ones\n"
                 )
             
-            assistant = self.client.beta.assistants.create(
+            assistant = await self.client.beta.assistants.create(
                 name="Multi-PDF Exam Generator",
                 instructions=instructions,
                 model='gpt-4o',  # TODO: Use self.model_candidates[0] when gpt-5 is supported
@@ -543,7 +540,7 @@ class GPTService(AIServiceInterface):
             
             # Create thread with all files attached
             attachments = [{"file_id": fid, "tools": [{"type": "file_search"}]} for fid in file_ids]
-            thread = self.client.beta.threads.create(
+            thread = await self.client.beta.threads.create(
                 messages=[
                     {
                         "role": "user",
@@ -554,13 +551,13 @@ class GPTService(AIServiceInterface):
             )
             
             # Run assistant
-            run = self.client.beta.threads.runs.create_and_poll(
+            run = await self.client.beta.threads.runs.create_and_poll(
                 thread_id=thread.id,
                 assistant_id=assistant.id,
             )
             
             if run.status == 'completed':
-                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                messages = await self.client.beta.threads.messages.list(thread_id=thread.id)
                 response_content = messages.data[0].content[0].text.value
                 
                 # Parse JSON from response
@@ -578,11 +575,11 @@ class GPTService(AIServiceInterface):
                 # Cleanup - delete all uploaded files
                 for file_id in file_ids:
                     try:
-                        self.client.files.delete(file_id)
+                        await self.client.files.delete(file_id)
                     except Exception as e:
                         self._log_warn(f"Failed to delete file {file_id}: {e}")
                 
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 return {
                     'success': True,
@@ -593,11 +590,11 @@ class GPTService(AIServiceInterface):
                 # Cleanup on failure
                 for file_id in file_ids:
                     try:
-                        self.client.files.delete(file_id)
+                        await self.client.files.delete(file_id)
                     except Exception as e:
                         self._log_warn(f"Failed to delete file {file_id}: {e}")
                 
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 raise Exception(f"Assistant run failed with status: {run.status}")
                 
@@ -608,7 +605,14 @@ class GPTService(AIServiceInterface):
                 'error': str(e),
             }
 
-    def grade_exam_with_pdf(self, pdf_bytes: bytes, original_filename: str, questions: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def grade_exam_with_pdf(
+        self,
+        pdf_bytes: bytes,
+        original_filename: str,
+        questions: List[Dict[str, Any]],
+        answers: List[Dict[str, Any]],
+        language: str = "ko"
+    ) -> Dict[str, Any]:
         """
         Grade exam answers by referencing the original PDF.
         
@@ -622,12 +626,15 @@ class GPTService(AIServiceInterface):
             Dict with success status and grading results
         """
         try:
+            from app.utils.language_utils import get_language_name
+            lang_name = get_language_name(language)
+
             # Upload PDF to OpenAI
             import io
             pdf_file = io.BytesIO(pdf_bytes)
             pdf_file.name = original_filename
             
-            file_response = self.client.files.create(
+            file_response = await self.client.files.create(
                 file=pdf_file,
                 purpose='assistants'
             )
@@ -636,7 +643,7 @@ class GPTService(AIServiceInterface):
             self._log_warn(f"Uploaded PDF for grading to OpenAI: {file_id}")
             
             # Create assistant for grading
-            assistant = self.client.beta.assistants.create(
+            assistant = await self.client.beta.assistants.create(
                 name="Exam Grader",
                 instructions=(
                     "You are an expert exam grader and learning advisor.\n\n"
@@ -661,6 +668,9 @@ class GPTService(AIServiceInterface):
                     "- strengths: 2-3 specific achievements (what student did well)\n"
                     "- weaknesses: 2-3 areas needing improvement (specific topics)\n"
                     "- study_recommendations: 2-3 actionable study suggestions\n\n"
+                    
+                    "LANGUAGE REQUIREMENT:\n"
+                    f"- All feedback, model answers, and textual output must be written in {lang_name} (language code: {language}).\n\n"
                     
                     "Return ONLY valid JSON with this structure:\n"
                     "{\n"
@@ -689,7 +699,10 @@ class GPTService(AIServiceInterface):
             )
             
             # Prepare grading prompt
-            grading_text = "Grade the following exam answers based on the lecture PDF:\n\n"
+            grading_text = (
+                f"Grade the following exam answers based on the lecture PDF. "
+                f"Respond entirely in {lang_name} (language code: {language}).\n\n"
+            )
             for question in questions:
                 q_id = question['id']
                 answer = next((a for a in answers if a['question_id'] == q_id), None)
@@ -702,7 +715,7 @@ class GPTService(AIServiceInterface):
                     grading_text += "Student's Answer: [No answer provided]\n\n"
             
             # Create thread and attach file
-            thread = self.client.beta.threads.create(
+            thread = await self.client.beta.threads.create(
                 messages=[
                     {
                         "role": "user",
@@ -715,13 +728,13 @@ class GPTService(AIServiceInterface):
             )
             
             # Run assistant
-            run = self.client.beta.threads.runs.create_and_poll(
+            run = await self.client.beta.threads.runs.create_and_poll(
                 thread_id=thread.id,
                 assistant_id=assistant.id,
             )
             
             if run.status == 'completed':
-                messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+                messages = await self.client.beta.threads.messages.list(thread_id=thread.id)
                 response_content = messages.data[0].content[0].text.value
                 
                 # Parse JSON from response
@@ -740,8 +753,8 @@ class GPTService(AIServiceInterface):
                 result_data = self._remove_citations(result_data)
                 
                 # Cleanup
-                self.client.files.delete(file_id)
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.files.delete(file_id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 return {
                     'success': True,
@@ -749,8 +762,8 @@ class GPTService(AIServiceInterface):
                 }
             else:
                 # Cleanup on failure
-                self.client.files.delete(file_id)
-                self.client.beta.assistants.delete(assistant.id)
+                await self.client.files.delete(file_id)
+                await self.client.beta.assistants.delete(assistant.id)
                 
                 raise Exception(f"Assistant run failed with status: {run.status}")
                 
@@ -761,7 +774,7 @@ class GPTService(AIServiceInterface):
                 'error': str(e),
             }
     
-    def grade_answer(self, question: str, student_answer: str, correct_answer: Optional[str] = None) -> Dict[str, Any]:
+    async def grade_answer(self, question: str, student_answer: str, correct_answer: Optional[str] = None) -> Dict[str, Any]:
         """
         Legacy method: Grade single answer without PDF reference.
         Note: Consider using grade_exam_with_pdf() for more accurate grading.
@@ -783,7 +796,7 @@ class GPTService(AIServiceInterface):
                 user_parts.append(f"\nCorrect Answer (for reference): {correct_answer}")
             user_prompt = "".join(user_parts)
 
-            response = self._chat_with_fallback(
+            response = await self._chat_with_fallback(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -836,7 +849,7 @@ class GPTService(AIServiceInterface):
                 'error': str(e),
             }
 
-    def grade_exam(self, questions: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def grade_exam(self, questions: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Dict[str, Any]:
         try:
             results = []
             total_score = 0.0
@@ -856,7 +869,7 @@ class GPTService(AIServiceInterface):
                     max_score += float(question['points'])
                     continue
 
-                grade_result = self.grade_answer(
+                grade_result = await self.grade_answer(
                     question['question'],
                     answer['answer'],
                 )

@@ -133,6 +133,22 @@ class AdminConfigService:
         self.config_ref.set(update_data, merge=True)
         return self.get_config()
 
+    def add_allowed_email(self, email: str, updated_by: Optional[str] = None) -> AdminConfig:
+        """Add a single email to the allowlist."""
+        normalized = self._normalize_emails([email])
+        if not normalized:
+            raise ValueError("유효한 이메일이 아닙니다.")
+
+        self.config_ref.set(
+            {
+                "allowed_emails": firestore.ArrayUnion(normalized),
+                "updated_at": firestore.SERVER_TIMESTAMP,
+                "updated_by": updated_by,
+            },
+            merge=True,
+        )
+        return self.get_config()
+
     def is_email_allowed(self, email: Optional[str]) -> bool:
         """Return True if email is allowed to access admin dashboard."""
         config = self.get_config()

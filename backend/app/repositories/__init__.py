@@ -5,6 +5,8 @@ from .base import BaseRepository
 from .subject import SubjectRepository
 from .pdf import PDFRepository
 from .exam import ExamRepository
+from .exam_job import ExamJobRepository
+from .grading_job import GradingJobRepository
 from .group import GroupRepository
 
 __all__ = [
@@ -13,5 +15,7 @@ __all__ = [
     'PDFRepository',
     'ExamRepository',
     'GroupRepository',
+    'ExamJobRepository',
+    'GradingJobRepository',
 ]
 

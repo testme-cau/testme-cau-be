@@ -1,13 +1,44 @@
 """
 Authentication dependencies for FastAPI
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import Request, HTTPException, status
 from firebase_admin import auth, firestore
 import logging
 from config import settings
+from app.services.admin_config_service import AdminConfigService
+from app.models.admin import ServiceStatus
 
 logger = logging.getLogger(__name__)
+config_service = AdminConfigService()
+
+
+def _enforce_beta_access(email: Optional[str]) -> None:
+    """
+    Ensure user is allowed during closed beta.
+    """
+    try:
+        config = config_service.get_config()
+    except Exception as exc:  # pragma: no cover - fall back if Firestore unavailable
+        logger.warning("Failed to load admin config for beta enforcement: %s", exc)
+        return
+
+    if config.status != ServiceStatus.closed_beta:
+        return
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="closed_beta_not_allowed",
+        )
+
+    normalized = email.strip().lower()
+    allowed = {addr.lower() for addr in config.allowed_emails}
+    if normalized not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="closed_beta_not_allowed",
+        )
 
 
 def ensure_default_subject(user_uid: str) -> str:
@@ -88,6 +119,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
                     user_uid = decoded_token['uid']
                     
                     # Ensure user has a default subject
+                    _enforce_beta_access(decoded_token.get('email'))
                     ensure_default_subject(user_uid)
                     
                     return {
@@ -95,6 +127,8 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
                         'email': decoded_token.get('email'),
                         'firebase_user': decoded_token
                     }
+                except HTTPException:
+                    raise
                 except Exception as e:
                     logger.error(f'Session token verification failed: {e}')
                     # Clear invalid session
@@ -145,6 +179,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
         user_uid = decoded_token['uid']
         
         # Ensure user has a default subject
+        _enforce_beta_access(decoded_token.get('email'))
         ensure_default_subject(user_uid)
         
         # Return user info
@@ -154,6 +189,8 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
             'firebase_user': decoded_token
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f'Token verification failed: {e}')
         raise HTTPException(

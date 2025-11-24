@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
-from app.models.admin import AdminConfig, ServiceStatus
+from app.models.admin import AdminConfig, ServiceStatus, WaitlistEntry
 
 
 def _dummy_config() -> AdminConfig:
@@ -14,7 +14,7 @@ def _dummy_config() -> AdminConfig:
         allowed_emails=["beta@test.me"],
         ai_provider="gpt",
         openai_model="gpt-4o",
-        gemini_model="gemini-1.5-pro",
+        gemini_model="gemini-2.5-pro",
     )
 
 
@@ -97,13 +97,18 @@ def test_update_service_status_calls_service(client: TestClient, monkeypatch):
         allowed_emails=[],
         ai_provider="gpt",
         openai_model="gpt-4o-mini",
-        gemini_model="gemini-1.5-pro",
+        gemini_model="gemini-2.5-pro",
     )
 
     mock_update = MagicMock(return_value=updated_config)
+    mock_invalidate = MagicMock()
     monkeypatch.setattr(
         "app.routes.admin.config_service.update_status",
         mock_update,
+    )
+    monkeypatch.setattr(
+        "app.routes.admin.invalidate_admin_config_cache",
+        mock_invalidate,
     )
 
     response = client.put(
@@ -113,6 +118,44 @@ def test_update_service_status_calls_service(client: TestClient, monkeypatch):
     assert response.status_code == 200
     assert response.json()["config"]["status"] == "release"
     mock_update.assert_called_once()
+    mock_invalidate.assert_called_once()
+
+
+def test_update_parameters_invalidates_cache(client: TestClient, monkeypatch):
+    _authenticate_admin(client, monkeypatch)
+
+    updated_config = AdminConfig(
+        status=ServiceStatus.release,
+        allowed_emails=[],
+        ai_provider="gemini",
+        openai_model="gpt-4o",
+        gemini_model="gemini-2.5-pro",
+    )
+
+    mock_update = MagicMock(return_value=updated_config)
+    mock_invalidate = MagicMock()
+    monkeypatch.setattr(
+        "app.routes.admin.config_service.update_parameters",
+        mock_update,
+    )
+    monkeypatch.setattr(
+        "app.routes.admin.invalidate_admin_config_cache",
+        mock_invalidate,
+    )
+
+    response = client.put(
+        "/admin/api/config/parameters",
+        json={
+            "ai_provider": "gemini",
+            "openai_model": "gpt-4o",
+            "gemini_model": "gemini-2.5-pro",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["config"]["ai_provider"] == "gemini"
+    mock_update.assert_called_once()
+    mock_invalidate.assert_called_once()
 
 
 def test_analytics_endpoint_returns_mock_data(client: TestClient, monkeypatch):
@@ -149,4 +192,72 @@ def test_analytics_endpoint_returns_mock_data(client: TestClient, monkeypatch):
     response = client.get("/admin/api/analytics/summary")
     assert response.status_code == 200
     assert response.json()["summary"]["total_users"] == 1
+
+
+def test_admin_waitlist_list_endpoint(client: TestClient, monkeypatch):
+    _authenticate_admin(client, monkeypatch)
+
+    monkeypatch.setattr(
+        "app.routes.admin.waitlist_service.list_entries",
+        lambda: [
+            WaitlistEntry(
+                entry_id="wait-1",
+                email="pending@test.me",
+                status="pending",
+            )
+        ],
+    )
+
+    response = client.get("/admin/api/waitlist")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["entries"][0]["email"] == "pending@test.me"
+
+
+def test_admin_waitlist_approve_endpoint(client: TestClient, monkeypatch):
+    _authenticate_admin(client, monkeypatch)
+
+    called = {}
+
+    def _approve(entry_id, updated_by=None):
+        called["entry_id"] = entry_id
+        called["updated_by"] = updated_by
+
+    monkeypatch.setattr(
+        "app.routes.admin.waitlist_service.approve_entry",
+        _approve,
+    )
+    monkeypatch.setattr(
+        "app.routes.admin.config_service.get_config",
+        lambda: _dummy_config(),
+    )
+
+    response = client.post(
+        "/admin/api/waitlist/approve",
+        json={"entry_id": "wait-1"},
+    )
+    assert response.status_code == 200
+    assert called["entry_id"] == "wait-1"
+
+
+def test_admin_waitlist_reject_endpoint(client: TestClient, monkeypatch):
+    _authenticate_admin(client, monkeypatch)
+
+    called = {}
+
+    def _remove(entry_id):
+        called["entry_id"] = entry_id
+
+    monkeypatch.setattr(
+        "app.routes.admin.waitlist_service.remove_entry",
+        _remove,
+    )
+
+    response = client.post(
+        "/admin/api/waitlist/reject",
+        json={"entry_id": "wait-2"},
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert called["entry_id"] == "wait-2"
 

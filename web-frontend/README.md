@@ -17,6 +17,12 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # Backend API URL
 NEXT_PUBLIC_API_URL=http://localhost:5000
+
+# Development Auth Helpers (optional)
+# Force local dev bypass without setting sessionStorage flag
+NEXT_PUBLIC_FORCE_DEV_AUTH=true
+# Override if you change backend dev token
+NEXT_PUBLIC_DEV_AUTH_TOKEN=dev-token-123
 ```
 
 ## 실행 방법

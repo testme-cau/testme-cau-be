@@ -1,17 +1,19 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { groupsApi } from "@/lib/api/groups";
-import { Group } from "@/types/api";
+import { getSubjects } from "@/lib/api/subjects";
+import { Group, Subject } from "@/types/api";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "./Sidebar";
 import { GroupDialog } from "./GroupDialog";
+import { LanguageSelector } from "./LanguageSelector";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,7 +22,9 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupFormData, setGroupFormData] = useState({ name: "", description: "" });
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -30,26 +34,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [deletingGroup, setDeletingGroup] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const selectedGroup = searchParams.get("group");
 
-  useEffect(() => {
-    loadGroups();
-
-    // Listen for group updates
-    const handleGroupsUpdated = () => {
-      loadGroups();
-    };
-    window.addEventListener("groupsUpdated", handleGroupsUpdated);
-    
-    return () => {
-      window.removeEventListener("groupsUpdated", handleGroupsUpdated);
-    };
-  }, []);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       const data = await groupsApi.getGroups();
       setGroups(data);
@@ -58,7 +48,55 @@ export function AppLayout({ children }: AppLayoutProps) {
     } finally {
       setLoadingGroups(false);
     }
-  };
+  }, []);
+
+  const loadSubjects = useCallback(async () => {
+    try {
+      const data = await getSubjects();
+      const validSubjects = data.filter(s => s.subject_id && s.subject_id.trim() !== '');
+      setSubjects(validSubjects);
+    } catch (error) {
+      console.error("Failed to load subjects:", error);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      setGroups([]);
+      setSubjects([]);
+      setLoadingGroups(false);
+      setLoadingSubjects(false);
+      return;
+    }
+
+    loadGroups();
+    loadSubjects();
+
+    const handleGroupsUpdated = () => {
+      loadGroups();
+    };
+    const handleSubjectsUpdated = () => {
+      loadSubjects();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("groupsUpdated", handleGroupsUpdated);
+      window.addEventListener("subjectsUpdated", handleSubjectsUpdated);
+    }
+    
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("groupsUpdated", handleGroupsUpdated);
+        window.removeEventListener("subjectsUpdated", handleSubjectsUpdated);
+      }
+    };
+  }, [authLoading, user, loadGroups, loadSubjects]);
 
   const handleGroupClick = (groupId: string | null) => {
     if (groupId === null) {
@@ -168,8 +206,23 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.href = "/login";
+    const { error } = await signOut();
+
+    if (error) {
+      toast({
+        title: "로그아웃 실패",
+        description: "다시 시도해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+      return;
+    }
+
+    router.replace("/");
   };
 
   return (
@@ -192,16 +245,19 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b bg-white px-4 lg:px-6">
+        <header className="flex h-16 items-center border-b bg-white px-4 lg:px-6">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="mr-3 lg:hidden"
             onClick={() => setSidebarOpen(true)}
+            aria-label="사이드바 열기"
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="hidden lg:block"></div>
+          <div className="flex flex-1 justify-end">
+            <LanguageSelector />
+          </div>
         </header>
 
         {/* Page content */}

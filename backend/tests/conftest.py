@@ -133,7 +133,7 @@ def mock_ai_service():
     """Mock AI Service with enhanced response"""
     mock = Mock()
     mock.provider_name = 'gpt'
-    mock.generate_exam_from_pdf = Mock(return_value={
+    mock.generate_exam_from_pdf = AsyncMock(return_value={
         'success': True,
         'exam': {
             'questions': [
@@ -154,7 +154,28 @@ def mock_ai_service():
             'estimated_time': 5
         }
     })
-    mock.grade_exam_with_pdf = Mock(return_value={
+    mock.generate_exam_from_multiple_pdfs = AsyncMock(return_value={
+        'success': True,
+        'exam': {
+            'questions': [
+                {
+                    'id': 1,
+                    'question': 'Describe JVM.',
+                    'type': 'essay',
+                    'options': None,
+                    'points': 20,
+                    'topic': 'Java',
+                    'correct_answer': None,
+                    'model_answer': 'Detailed JVM explanation',
+                    'keywords': None,
+                    'scoring_rubric': None
+                }
+            ],
+            'total_points': 20,
+            'estimated_time': 10
+        }
+    })
+    mock.grade_exam_with_pdf = AsyncMock(return_value={
         'success': True,
         'result': {
             'total_score': 85.0,

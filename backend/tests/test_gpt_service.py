@@ -6,6 +6,7 @@ Or: python tests/test_gpt_service.py (standalone)
 """
 import os
 import sys
+import asyncio
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -171,7 +172,7 @@ def test_grading_mock():
         answer = "A variable is a container that stores data values."
         
         print("✓ Grading mock answer...")
-        result = gpt_service.grade_answer(question, answer)
+        result = asyncio.run(gpt_service.grade_answer(question, answer))
         
         if result['success']:
             grade = result['grade']
