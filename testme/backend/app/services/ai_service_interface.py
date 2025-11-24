@@ -12,7 +12,7 @@ class AIServiceInterface(ABC):
     """
     
     @abstractmethod
-    def generate_exam_from_pdf(
+    async def generate_exam_from_pdf(
         self,
         pdf_bytes: bytes,
         original_filename: str,
@@ -58,7 +58,7 @@ class AIServiceInterface(ABC):
         pass
     
     @abstractmethod
-    def generate_exam_from_multiple_pdfs(
+    async def generate_exam_from_multiple_pdfs(
         self,
         pdf_bytes_list: List[tuple[bytes, str]],
         num_questions: int = 10,
@@ -102,12 +102,13 @@ class AIServiceInterface(ABC):
         pass
     
     @abstractmethod
-    def grade_exam_with_pdf(
+    async def grade_exam_with_pdf(
         self,
         pdf_bytes: bytes,
         original_filename: str,
         questions: List[Dict[str, Any]],
-        answers: List[Dict[str, Any]]
+        answers: List[Dict[str, Any]],
+        language: str = "ko"
     ) -> Dict[str, Any]:
         """
         Grade exam answers by referencing the original PDF
@@ -118,6 +119,7 @@ class AIServiceInterface(ABC):
             questions: List of exam questions
             answers: List of student answers with structure:
                 [{'question_id': int, 'answer': str}, ...]
+            language: Target language for scoring feedback (ISO 639-1 code)
         
         Returns:
             Dict with structure:
@@ -144,7 +146,7 @@ class AIServiceInterface(ABC):
         pass
     
     @abstractmethod
-    def grade_answer(
+    async def grade_answer(
         self,
         question: str,
         student_answer: str,

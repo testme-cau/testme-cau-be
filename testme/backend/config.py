@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
-    google_model: str = Field(default="gemini-1.5-pro", alias="GOOGLE_MODEL")
+    google_model: str = Field(default="gemini-2.5-pro", alias="GOOGLE_MODEL")
     default_ai_provider: str = Field(default="gpt", alias="DEFAULT_AI_PROVIDER")
     
     # Exam history / personalization
@@ -58,14 +58,18 @@ class Settings(BaseSettings):
     admin_pw: str = Field(default="admin", alias="ADMIN_PW")
     
     # CORS
-    cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
     
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins string into list"""
-        if self.cors_origins == "*":
+        value = (self.cors_origins or "").strip()
+        if not value:
+            # Sensible default for local development
+            return ["http://localhost:3000"]
+        if value == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
 
 
 # Global settings instance

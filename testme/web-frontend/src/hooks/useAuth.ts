@@ -3,13 +3,18 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getIdToken } from '@/lib/auth';
 
+const DEV_AUTH_TOKEN =
+  process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
+const FORCE_DEV_AUTH =
+  process.env.NEXT_PUBLIC_FORCE_DEV_AUTH === 'true';
+
 // Mock user for development
 const createMockUser = (): Partial<User> => ({
   uid: 'dev-user-123',
   email: 'test@testme.dev',
   displayName: 'Test User',
   emailVerified: true,
-  getIdToken: async () => 'dev-token-123',
+  getIdToken: async () => DEV_AUTH_TOKEN,
 } as Partial<User>);
 
 export function useAuth() {
@@ -18,8 +23,10 @@ export function useAuth() {
   const [loading, setLoading] = useState<boolean>(true);
   const [idToken, setIdToken] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const isDevelopment = process.env.NODE_ENV === 'development';
   const hasFirebaseConfig = Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-  const shouldUseMockAuth = process.env.NODE_ENV === 'development' && !hasFirebaseConfig;
+  const baseMockCondition = isDevelopment && !hasFirebaseConfig;
+  const shouldUseMockAuth = baseMockCondition || FORCE_DEV_AUTH;
 
   useEffect(() => {
     // 클라이언트 마운트 표시
@@ -27,23 +34,23 @@ export function useAuth() {
 
     console.log('[useAuth] Mounted, NODE_ENV:', process.env.NODE_ENV, 'hasFirebaseConfig:', hasFirebaseConfig);
     
-    if (shouldUseMockAuth) {
-      // 실제 Firebase 설정이 없는 개발환경에서는 기존처럼 세션 플래그를 사용한다.
-      const devLoggedIn = typeof window !== 'undefined' && sessionStorage.getItem('dev-logged-in') === 'true';
-      
-      if (devLoggedIn) {
-        console.log('[useAuth] Development mode - Restoring mock session');
+    const devLoggedIn =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('dev-logged-in') === 'true';
+    const useDevBypass = (isDevelopment && devLoggedIn) || FORCE_DEV_AUTH;
+
+    if (shouldUseMockAuth || useDevBypass) {
+      console.log('[useAuth] Development mock mode - using mock user (devLoggedIn:', devLoggedIn, ', shouldUseMockAuth:', shouldUseMockAuth, ')');
+      if (useDevBypass) {
         const mockUser = createMockUser() as User;
         setUser(mockUser);
-        setIdToken('dev-token-123');
+        setIdToken(DEV_AUTH_TOKEN);
       } else {
-        console.log('[useAuth] Development mode - No mock session, user logged out');
         setUser(null);
         setIdToken(null);
       }
-      
       setLoading(false);
-      return; // Firebase Auth 실행 안 함
+      return;
     }
 
     // Firebase Auth 사용 (프로덕션 또는 실제 설정이 있는 개발환경)

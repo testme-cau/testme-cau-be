@@ -15,6 +15,8 @@ import { getPDFs } from "@/lib/api/pdfs";
 import { PDF, ExamGenerationRequest } from "@/types/api";
 import { ArrowLeft, Loader2, FileText } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ExamLanguageSelect } from "@/components/subjects/ExamLanguageSelect";
+import { useLocaleStore } from "@/store/localeStore";
 
 export default function GenerateExamPage() {
   const params = useParams();
@@ -22,6 +24,7 @@ export default function GenerateExamPage() {
   const { toast } = useToast();
   const subjectId = params.subjectId as string;
   const pdfId = params.pdfId as string;
+  const storeLocale = useLocaleStore((state) => state.locale);
 
   const [loading, setLoading] = useState(false);
   const [pdfsLoading, setPdfsLoading] = useState(true);
@@ -31,6 +34,7 @@ export default function GenerateExamPage() {
     num_questions: 5,
     difficulty: "medium" as "easy" | "medium" | "hard",
   });
+  const [language, setLanguage] = useState<string>(storeLocale);
 
   useEffect(() => {
     loadPDFs();
@@ -98,14 +102,15 @@ export default function GenerateExamPage() {
         pdf_ids: selectedPdfIds,
         num_questions: formData.num_questions,
         difficulty: formData.difficulty,
+        language,
       };
 
-      const exam = await generateExam(subjectId, request);
+      const job = await generateExam(subjectId, request);
       toast({
-        title: "시험 생성 완료",
-        description: "AI가 시험을 성공적으로 생성했습니다.",
+        title: "시험 생성이 시작되었습니다",
+        description: "AI가 백그라운드에서 시험을 생성합니다. 잠시 후 목록에서 확인하세요.",
       });
-      router.push(`/dashboard/subjects/${subjectId}/exams/${exam.exam_id}`);
+      router.push(`/dashboard/subjects/${subjectId}?tab=exams`);
     } catch (error: any) {
       toast({
         title: "시험 생성 실패",
@@ -232,6 +237,11 @@ export default function GenerateExamPage() {
             {/* Exam Options */}
             <Card className="p-6">
               <div className="space-y-6">
+                <ExamLanguageSelect
+                  value={language}
+                  onChange={setLanguage}
+                  disabled={loading}
+                />
                 {/* Number of Questions */}
                 <div>
                   <Label>문제 수</Label>

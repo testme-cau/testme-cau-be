@@ -15,10 +15,14 @@ from app.models.admin import (
     FirebaseLoginRequest,
     ParametersUpdateRequest,
     StatusUpdateRequest,
+    WaitlistActionRequest,
+    WaitlistResponse,
 )
 from app.services.admin_analytics_service import AdminAnalyticsService
 from app.services.admin_config_service import AdminConfigService
+from app.services.ai_factory import invalidate_admin_config_cache
 from app.services.admin_credentials_service import AdminCredentialService
+from app.services.admin_waitlist_service import AdminWaitlistService
 from config import settings
 
 
@@ -28,6 +32,7 @@ templates = Jinja2Templates(directory="app/templates")
 config_service = AdminConfigService()
 credential_service = AdminCredentialService()
 analytics_service = AdminAnalyticsService()
+waitlist_service = AdminWaitlistService()
 
 
 def _require_admin_gate(request: Request):
@@ -181,6 +186,7 @@ async def update_service_status(
     config = config_service.update_status(
         payload, updated_by=session.get("firebase_user", {}).get("email")
     )
+    invalidate_admin_config_cache()
     return AdminConfigResponse(config=config)
 
 
@@ -192,6 +198,7 @@ async def update_parameters(
     config = config_service.update_parameters(
         payload, updated_by=session.get("firebase_user", {}).get("email")
     )
+    invalidate_admin_config_cache()
     return AdminConfigResponse(config=config)
 
 
@@ -244,3 +251,43 @@ async def rotate_credentials(
 @router.get("/api/analytics/summary", response_model=AnalyticsSummaryResponse)
 async def analytics_summary(_: dict = Depends(_require_full_admin)):
     return analytics_service.get_summary()
+
+
+@router.get("/api/waitlist", response_model=WaitlistResponse)
+async def get_waitlist(_: dict = Depends(_require_full_admin)):
+    entries = waitlist_service.list_entries()
+    return WaitlistResponse(entries=entries)
+
+
+@router.post("/api/waitlist/approve", response_model=AdminConfigResponse)
+async def approve_waitlist_entry(
+    payload: WaitlistActionRequest,
+    session=Depends(_require_full_admin),
+):
+    try:
+        waitlist_service.approve_entry(
+            payload.entry_id,
+            updated_by=session.get("firebase_user", {}).get("email"),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    invalidate_admin_config_cache()
+    return AdminConfigResponse(config=config_service.get_config())
+
+
+@router.post("/api/waitlist/reject")
+async def reject_waitlist_entry(
+    payload: WaitlistActionRequest,
+    _: dict = Depends(_require_full_admin),
+):
+    try:
+        waitlist_service.remove_entry(payload.entry_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return {"success": True, "message": "대기열에서 제거되었습니다."}

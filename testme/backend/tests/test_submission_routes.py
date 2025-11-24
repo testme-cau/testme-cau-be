@@ -34,16 +34,30 @@ def test_get_submission_without_auth(client: TestClient):
     assert response.status_code == 401
 
 
-@patch('app.services.exam_service.ExamService.submit_and_grade_exam')
+@patch('app.services.exam_service.ExamService.submit_exam_async')
 def test_submit_exam_success(
-    mock_submit_and_grade,
+    mock_submit_async,
     client: TestClient,
     auth_override,
     mock_submission_data
 ):
     """Test successful exam submission and grading"""
-    # Mock the service method
-    mock_submit_and_grade.return_value = mock_submission_data
+    mock_job = {
+        'job_id': 'grading_job_123',
+        'subject_id': TEST_SUBJECT_ID,
+        'exam_id': TEST_EXAM_ID,
+        'submission_id': TEST_SUBMISSION_ID,
+        'status': 'processing',
+        'total_questions': 5,
+        'ai_provider': 'gpt',
+        'progress_percentage': 25.0,
+        'estimated_duration_seconds': 60,
+        'created_at': datetime.utcnow().isoformat()
+    }
+    mock_submit_async.return_value = {
+        'submission_id': TEST_SUBMISSION_ID,
+        'job': mock_job
+    }
     
     answers = [
         {"question_id": 1, "answer": "4"},
@@ -60,32 +74,37 @@ def test_submit_exam_success(
     
     assert data['success'] is True
     assert data['submission_id'] == TEST_SUBMISSION_ID
-    assert data['status'] == 'graded'
-    assert 'grading_result' in data
-    assert data['grading_result']['total_score'] == 85.0
-    assert data['grading_result']['max_score'] == 100.0
+    assert 'job' in data
+    assert data['job']['job_id'] == mock_job['job_id']
+    assert data['job']['status'] == 'processing'
+    assert data['job']['progress_percentage'] == mock_job['progress_percentage']
+    mock_submit_async.assert_called_once()
 
 
-@patch('app.services.exam_service.ExamService.submit_and_grade_exam')
+@patch('app.services.exam_service.ExamService.submit_exam_async')
 def test_submit_exam_grading_failed(
-    mock_submit_and_grade,
+    mock_submit_async,
     client: TestClient,
     auth_override
 ):
     """Test exam submission when grading fails"""
-    # Mock grading failure
-    failed_submission = {
-        'submission_id': TEST_SUBMISSION_ID,
-        'exam_id': TEST_EXAM_ID,
+    failed_job = {
+        'job_id': 'grading_job_456',
         'subject_id': TEST_SUBJECT_ID,
-        'user_id': 'test_user_123',
-        'answers': [],
+        'exam_id': TEST_EXAM_ID,
+        'submission_id': TEST_SUBMISSION_ID,
         'status': 'failed',
+        'total_questions': 5,
+        'ai_provider': 'gpt',
+        'progress_percentage': 0.0,
         'error_message': 'AI service timeout',
-        'submitted_at': datetime.utcnow(),
-        'graded_at': datetime.utcnow()
+        'created_at': datetime.utcnow().isoformat(),
+        'failed_at': datetime.utcnow().isoformat()
     }
-    mock_submit_and_grade.return_value = failed_submission
+    mock_submit_async.return_value = {
+        'submission_id': TEST_SUBMISSION_ID,
+        'job': failed_job
+    }
     
     answers = [{"question_id": 1, "answer": "test"}]
     
@@ -98,8 +117,10 @@ def test_submit_exam_grading_failed(
     data = response.json()
     
     assert data['success'] is True
-    assert data['status'] == 'failed'
-    assert data['error_message'] == 'AI service timeout'
+    assert data['submission_id'] == TEST_SUBMISSION_ID
+    assert data['job']['status'] == 'failed'
+    assert data['job']['error_message'] == 'AI service timeout'
+    mock_submit_async.assert_called_once()
 
 
 @pytest.mark.skip(reason="Requires Firestore emulator - integration test")

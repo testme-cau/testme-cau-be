@@ -122,6 +122,33 @@ class PDFService:
         
         pdfs_data = self.pdf_repo.get_by_subject(user_id, subject_id)
         return [PDF(**data) for data in pdfs_data]
+
+    def list_all_pdfs(self, user_id: str) -> List[dict]:
+        """
+        List all PDFs for a user across every subject.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of PDF dictionaries including subject metadata
+        """
+        pdfs_data = self.pdf_repo.list_all_for_user(user_id)
+        if not pdfs_data:
+            return []
+
+        subjects = self.subject_repo.get_by_user(user_id)
+        subject_map = {
+            subject.get('subject_id'): subject.get('name')
+            for subject in subjects
+            if subject.get('subject_id')
+        }
+
+        for pdf in pdfs_data:
+            subject_id = pdf.get('subject_id')
+            pdf['subject_name'] = subject_map.get(subject_id)
+
+        return pdfs_data
     
     def get_download_url(self, user_id: str, subject_id: str, pdf_id: str) -> dict:
         """
@@ -179,4 +206,21 @@ class PDFService:
         
         # Delete metadata from Firestore
         self.pdf_repo.delete_pdf(user_id, subject_id, pdf_id)
+
+    def delete_pdf_by_id(self, user_id: str, pdf_id: str) -> None:
+        """
+        Delete a PDF when only file_id is known.
+
+        Args:
+            user_id: User ID
+            pdf_id: PDF ID
+        """
+        pdf_data = self.pdf_repo.get_by_file_id(user_id, pdf_id)
+        subject_id = pdf_data.get('subject_id')
+        if not subject_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PDF does not have an associated subject"
+            )
+        self.delete_pdf(user_id, subject_id, pdf_id)
 

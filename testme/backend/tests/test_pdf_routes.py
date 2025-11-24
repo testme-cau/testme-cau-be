@@ -200,6 +200,58 @@ def test_delete_pdf(
     assert data['success'] is True
 
 
+def test_list_all_pdfs(
+    client: TestClient,
+    app,
+    auth_override
+):
+    """Test aggregated PDF listing"""
+    from datetime import datetime
+    from app.dependencies.service import get_pdf_service
+    
+    mock_pdf_service = Mock()
+    mock_pdf_service.list_all_pdfs.return_value = [
+        {
+            'file_id': 'test_pdf_1',
+            'original_filename': 'test1.pdf',
+            'subject_id': 'subject_a',
+            'subject_name': 'Subject A',
+            'size': 1234,
+            'uploaded_at': datetime.utcnow(),
+            'status': 'uploaded'
+        }
+    ]
+    
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
+    
+    response = client.get("/api/pdf/list")
+    assert response.status_code == 200
+    data = response.json()
+    assert data['count'] == 1
+    assert data['pdfs'][0]['subject_id'] == 'subject_a'
+    assert data['pdfs'][0]['subject_name'] == 'Subject A'
+
+
+def test_delete_pdf_by_id(
+    client: TestClient,
+    app,
+    auth_override
+):
+    """Test deleting PDF using flat endpoint"""
+    from app.dependencies.service import get_pdf_service
+    
+    mock_pdf_service = Mock()
+    mock_pdf_service.delete_pdf_by_id.return_value = None
+    
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
+    
+    response = client.delete("/api/pdf/test_pdf_999")
+    assert response.status_code == 200
+    data = response.json()
+    assert data['success'] is True
+    mock_pdf_service.delete_pdf_by_id.assert_called_once()
+
+
 def test_delete_pdf_not_found(client: TestClient, auth_override):
     """Test deleting non-existent PDF fails"""
     with patch('firebase_admin.firestore.client') as mock_firestore:

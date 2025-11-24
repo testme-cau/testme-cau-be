@@ -125,6 +125,10 @@ class ExamGenerationRequest(BaseModel):
     num_questions: int = Field(default=10, ge=1, le=50, description="Number of questions to generate")
     difficulty: str = Field(default="medium", description="Difficulty level: easy, medium, hard")
     ai_provider: Optional[str] = Field(default=None, description="AI provider to use: gpt or gemini")
+    language: Optional[str] = Field(
+        default=None,
+        description="Language code for generated exam and grading feedback (ISO 639-1: ko, en, ja, etc.)"
+    )
     
     @validator('pdf_ids')
     def validate_pdf_ids(cls, v):
@@ -153,13 +157,23 @@ class ExamGenerationRequest(BaseModel):
             raise ValueError(f'AI provider must be one of {allowed}')
         return v.lower()
     
+    @validator('language')
+    def validate_language(cls, v):
+        if v is None:
+            return v
+        from app.utils.language_utils import is_valid_language_code, VALID_LANGUAGE_CODES
+        if not is_valid_language_code(v):
+            raise ValueError(f'Language must be ISO 639-1 code. Supported: {VALID_LANGUAGE_CODES}')
+        return v.lower()
+    
     class Config:
         schema_extra = {
             "example": {
                 "pdf_ids": ["123e4567-e89b-12d3-a456-426614174000"],
                 "num_questions": 10,
                 "difficulty": "medium",
-                "ai_provider": "gpt"
+                "ai_provider": "gpt",
+                "language": "ko"
             }
         }
 

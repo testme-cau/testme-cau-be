@@ -1,8 +1,13 @@
 """
 Tests for exam validator utility
 """
+from unittest.mock import MagicMock
+
 import pytest
+
+from app.services.exam_service import ExamService
 from app.utils.exam_validator import validate_exam_response, validate_scoring_rubric
+from app.utils.exam_utils import normalize_exam_points
 
 
 def test_validate_exam_response_success():
@@ -328,6 +333,155 @@ def test_validate_exam_response_default_estimated_time():
     
     # Should provide default (num_questions * 3)
     assert result['estimated_time'] == 3
+
+
+def test_normalize_exam_points_scales_total_to_target():
+    """정규화 헬퍼가 총점을 100점으로 맞추는지 검증"""
+    exam_payload = {
+        'questions': [
+            {
+                'id': 1,
+                'question': 'Q1',
+                'type': 'multiple_choice',
+                'points': 20,
+                'options': ['A', 'B', 'C', 'D'],
+                'correct_answer': 'A',
+                'model_answer': 'A'
+            },
+            {
+                'id': 2,
+                'question': 'Q2',
+                'type': 'essay',
+                'points': 55,
+                'model_answer': 'Essay',
+                'scoring_rubric': [
+                    {'criterion': 'Logic', 'points': 30},
+                    {'criterion': 'Examples', 'points': 25}
+                ]
+            }
+        ],
+        'total_points': 75,
+        'estimated_time': 20
+    }
+
+    normalized = normalize_exam_points(exam_payload, target_total=100)
+
+    assert normalized['total_points'] == pytest.approx(100)
+    assert sum(q['points'] for q in normalized['questions']) == pytest.approx(100)
+    essay_question = normalized['questions'][1]
+    assert sum(item['points'] for item in essay_question['scoring_rubric']) == pytest.approx(
+        essay_question['points']
+    )
+
+
+def test_normalize_exam_points_handles_zero_rubric_entries():
+    """배점 0 또는 rubric 없는 항목이 있어도 안정적으로 동작"""
+    exam_payload = {
+        'questions': [
+            {
+                'id': 1,
+                'question': 'Q1',
+                'type': 'short_answer',
+                'points': 30,
+                'model_answer': 'Ans',
+                'scoring_rubric': [
+                    {'criterion': 'Core', 'points': 20},
+                    {'criterion': 'Examples', 'points': 10}
+                ]
+            },
+            {
+                'id': 2,
+                'question': 'Q2',
+                'type': 'short_answer',
+                'points': 0,
+                'model_answer': 'Zero question',
+                'scoring_rubric': []
+            },
+            {
+                'id': 3,
+                'question': 'Q3',
+                'type': 'essay',
+                'points': 45,
+                'model_answer': 'Essay',
+                'scoring_rubric': [
+                    {'criterion': 'Depth', 'points': 25},
+                    {'criterion': 'Clarity', 'points': 20}
+                ]
+            }
+        ],
+        'total_points': 75,
+        'estimated_time': 30
+    }
+
+    normalized = normalize_exam_points(exam_payload, target_total=100)
+
+    assert normalized['total_points'] == pytest.approx(100)
+    assert normalized['questions'][1]['points'] == 0  # 0점 문제는 그대로 유지
+    for question in normalized['questions']:
+        rubric = question.get('scoring_rubric') or []
+        if rubric:
+            assert sum(item['points'] for item in rubric) == pytest.approx(question['points'])
+
+
+def _create_exam_service() -> ExamService:
+    """Helper to build ExamService with mocked dependencies for normalization tests."""
+    mock_repo = MagicMock()
+    return ExamService(
+        exam_repo=mock_repo,
+        subject_repo=mock_repo,
+        pdf_service=mock_repo,
+        exam_job_repo=mock_repo,
+        grading_job_repo=mock_repo,
+        submission_repo=mock_repo,
+    )
+
+
+def test_normalize_grading_result_uses_exam_total_points():
+    service = _create_exam_service()
+    exam_data = {
+        'questions': [
+            {'id': 'q1', 'points': 20, 'type': 'short_answer'},
+            {'id': 'q2', 'points': 55, 'type': 'essay', 'scoring_rubric': []},
+        ],
+        'total_points': 75,
+    }
+    grading_result = {
+        'question_results': [
+            {'question_id': 'q1', 'score': 12, 'max_points': 40},
+            {'question_id': 'q2', 'score': 30, 'max_points': 60},
+        ],
+        'total_score': 42,
+        'max_score': 100,
+    }
+
+    normalized = service._normalize_grading_result(exam_data, grading_result, answers=[])
+
+    assert normalized['max_score'] == pytest.approx(75)
+    assert sum(result['max_points'] for result in normalized['question_results']) == pytest.approx(75)
+
+
+def test_normalize_grading_result_falls_back_to_question_sum_when_total_missing():
+    service = _create_exam_service()
+    exam_data = {
+        'questions': [
+            {'id': 'q1', 'points': 10, 'type': 'short_answer'},
+            {'id': 'q2', 'points': 15, 'type': 'short_answer'},
+        ],
+    }
+    grading_result = {
+        'question_results': [
+            {'question_id': 'q1', 'score': 8, 'max_points': 20},
+            {'question_id': 'q2', 'score': 10, 'max_points': 30},
+        ],
+        'total_score': 18,
+        'max_score': 100,
+    }
+
+    normalized = service._normalize_grading_result(exam_data, grading_result, answers=[])
+
+    assert normalized['max_score'] == pytest.approx(25)
+    assert sum(result['max_points'] for result in normalized['question_results']) == pytest.approx(25)
+
 
 
 

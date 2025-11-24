@@ -10,11 +10,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 interface PDFListProps {
   subjectId: string;
   initialPdfs: PDF[];
+  examCounts?: Record<string, number>;
 }
 
 export function PDFList({ 
   subjectId, 
-  initialPdfs
+  initialPdfs,
+  examCounts = {}
 }: PDFListProps) {
   const [pdfs, setPdfs] = useState<PDF[]>(initialPdfs);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,6 +88,7 @@ export function PDFList({
             subjectId={subjectId}
             onDownload={handleDownload}
             onDelete={handleDeleteClick}
+            examCount={examCounts[pdf.file_id] || 0}
           />
         ))}
       </div>
@@ -99,7 +102,6 @@ export function PDFList({
         confirmText="삭제"
         cancelText="취소"
         variant="destructive"
-        loading={deleting}
       />
     </>
   );

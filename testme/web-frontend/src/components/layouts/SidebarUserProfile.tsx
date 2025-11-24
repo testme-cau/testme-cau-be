@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SidebarUserProfileProps {
   user: {
@@ -12,6 +13,8 @@ interface SidebarUserProfileProps {
 }
 
 export function SidebarUserProfile({ user, onSignOut }: SidebarUserProfileProps) {
+  const t = useTranslations("common");
+
   return (
     <div className="border-t p-4">
       <div className="mb-3 flex items-center gap-3 rounded-lg bg-gray-100 p-3">
@@ -31,7 +34,7 @@ export function SidebarUserProfile({ user, onSignOut }: SidebarUserProfileProps)
         onClick={onSignOut}
       >
         <LogOut className="mr-2 h-4 w-4" />
-        로그아웃
+        {t("logout")}
       </Button>
     </div>
   );

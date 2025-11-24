@@ -112,6 +112,7 @@ class Exam(BaseModel):
     created_at: datetime
     status: str = "active"
     ai_provider: Optional[str] = "gpt"  # Which AI service was used
+    language: Optional[str] = None  # Language used for questions/feedback
     
     class Config:
         from_attributes = True

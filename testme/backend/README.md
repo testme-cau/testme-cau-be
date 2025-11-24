@@ -30,6 +30,14 @@ Users can select the AI provider via query parameter or use the system default.
 - The number of submissions inspected, per-topic caps, and prompt limits are configurable through the `EXAM_HISTORY_*` environment variables.
 - Low-scoring topics are prioritized while mastered topics are deemphasized, helping each exam target the learner's weak spots.
 
+### Current Score Normalization Flow
+
+- During generation the AI response is persisted as-is, so `total_points` equals the raw sum of per-question `points` (예: 75점).
+- During grading `_normalize_grading_result()` rescales whatever total was stored so that the returned `max_score` becomes 100점.
+- Dashboard exam 카드는 `exam.total_points`를, 채점 요약은 `grading_result.max_score`를 읽기 때문에 서로 다른 배점이 표시되는 UX 불일치가 발생합니다.
+- 결과적으로 학생이 문제를 풀고 채점되기 전/후 화면에서 서로 다른 총점을 볼 수 있으며, 이는 UX 혼란을 초래합니다.
+- 본 개선 작업에서는 출제 시점에 이미 100점 스케일을 적용하여 저장하고, 채점 파이프라인에서도 동일 정규화 로직을 공유하도록 변경합니다.
+
 ## Tech Stack
 
 - **Framework**: FastAPI 0.109.0
@@ -108,7 +116,7 @@ OPENAI_MODEL=gpt-5
 
 # Optional: Google AI (Gemini)
 GOOGLE_API_KEY=your-google-ai-key
-GOOGLE_MODEL=gemini-1.5-pro
+GOOGLE_MODEL=gemini-2.5-pro
 
 # AI Provider Selection
 DEFAULT_AI_PROVIDER=gpt  # or gemini

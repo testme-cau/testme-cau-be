@@ -117,11 +117,46 @@ async def list_pdfs(
             file_url=f"/api/subjects/{subject_id}/pdfs/{pdf.file_id}/download",
             size=pdf.size,
             uploaded_at=pdf.uploaded_at,
-            status=pdf.status
+            status=pdf.status,
+            subject_id=subject_id,
+            subject_name=None
         )
         for pdf in pdfs
     ]
     
+    return PDFListResponse(
+        success=True,
+        pdfs=pdf_list,
+        count=len(pdf_list)
+    )
+
+
+@router.get("/pdf/list", response_model=PDFListResponse)
+async def list_all_pdfs(
+    user: Dict[str, Any] = Depends(get_current_user),
+    pdf_service: PDFService = Depends(get_pdf_service)
+):
+    """
+    List all PDFs for the current user across every subject.
+    """
+    pdfs = pdf_service.list_all_pdfs(user['uid'])
+
+    pdf_list = [
+        PDFInfo(
+            file_id=pdf.get('file_id'),
+            original_filename=pdf.get('original_filename'),
+            file_url=f"/api/subjects/{pdf.get('subject_id')}/pdfs/{pdf.get('file_id')}/download"
+            if pdf.get('subject_id')
+            else "",
+            size=pdf.get('size', 0),
+            uploaded_at=pdf.get('uploaded_at'),
+            status=pdf.get('status', 'uploaded'),
+            subject_id=pdf.get('subject_id'),
+            subject_name=pdf.get('subject_name')
+        )
+        for pdf in pdfs
+    ]
+
     return PDFListResponse(
         success=True,
         pdfs=pdf_list,
@@ -147,6 +182,22 @@ async def delete_pdf(
         SuccessResponse
     """
     pdf_service.delete_pdf(user['uid'], subject_id, file_id)
+    return SuccessResponse(
+        success=True,
+        message="File deleted successfully"
+    )
+
+
+@router.delete("/pdf/{file_id}", response_model=SuccessResponse)
+async def delete_pdf_by_id(
+    file_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+    pdf_service: PDFService = Depends(get_pdf_service)
+):
+    """
+    Delete a PDF when only the file_id is known (admin dashboard convenience).
+    """
+    pdf_service.delete_pdf_by_id(user['uid'], file_id)
     return SuccessResponse(
         success=True,
         message="File deleted successfully"

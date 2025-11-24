@@ -51,6 +51,7 @@
       "signup": "시작하기",
       "product": "제품",
       "features": "특징",
+      "benefits": "혜택",
       "pricing": "가격",
       "about": "소개"
     },
@@ -58,7 +59,7 @@
       "eyebrow": "AI 기반 시험 생성",
       "titlePrimary": "시험으로 배우는,",
       "titleHighlight": "가장 효과적인 공부법",
-      "subtitle": "강의 자료로 시험 문제를 풀고, 틀린 부분을 다시 학습하세요.{br}능동적 회상으로 기억에 확실하게 남깁니다.",
+      "subtitle": "강의 자료로 시험 문제를 풀고, 틀린 부분을 다시 학습하세요.<br></br>능동적 회상으로 기억에 확실하게 남깁니다.",
       "betaBadge": "현재 클로즈베타 진행 중! 곧 오픈됩니다.",
       "cta": "시작하기",
       "usage": "<strong>{count}명+</strong>이 이미 사용 중"

@@ -100,6 +100,13 @@
             font-size: 20px;
         }
         
+        .section-hint {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
         .status {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -239,6 +246,13 @@
             font-weight: 600;
             color: #333;
         }
+
+        .pdf-subject {
+            font-size: 12px;
+            color: #6366f1;
+            margin-top: 4px;
+            font-weight: 500;
+        }
         
         .pdf-meta {
             font-size: 12px;
@@ -274,6 +288,59 @@
         .btn-small:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .waitlist-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .waitlist-item {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 150px;
+            gap: 12px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f9fafb;
+            border: 1px solid #edf2f7;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .waitlist-item {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .waitlist-email {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .waitlist-note {
+            font-size: 13px;
+            color: #4b5563;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .status-badge.approved {
+            background: #ecfdf5;
+            color: #047857;
         }
         
         .message {
@@ -446,6 +513,10 @@
         
         <div class="card">
             <h2>🤖 AI 파라미터</h2>
+            <p class="section-hint">
+                여기에서 저장한 기본 Provider/모델은 전체 API 요청에 즉시 반영되며
+                서버 재시작 없이도 적용됩니다.
+            </p>
             <div id="paramsMessage" class="message"></div>
             <div class="form-grid">
                 <label for="aiProviderSelect">기본 AI Provider</label>
@@ -460,9 +531,21 @@
             </div>
             <div class="form-grid">
                 <label for="geminiModelInput">Gemini 모델 이름</label>
-                <input id="geminiModelInput" class="input-control" placeholder="예: gemini-1.5-pro" />
+                <input id="geminiModelInput" class="input-control" placeholder="예: gemini-2.5-pro" />
             </div>
             <button id="saveParametersBtn" class="action-btn">파라미터 저장</button>
+        </div>
+
+        <div class="card">
+            <h2>📬 클로즈베타 승인 대기</h2>
+            <p class="section-hint">
+                닫힌 베타 단계에서는 초대 신청 목록을 확인하고, 허용 이메일 목록에 한번에 추가할 수 있습니다.
+            </p>
+            <div id="waitlistMessage" class="message"></div>
+            <div id="waitlistEmpty" style="display: none; text-align: center; color: #6b7280; padding: 16px; border: 1px dashed #e5e7eb; border-radius: 10px;">
+                현재 승인 대기 중인 요청이 없습니다.
+            </div>
+            <div id="waitlistList" class="waitlist-list"></div>
         </div>
         
         <div class="card">
@@ -566,6 +649,7 @@
     
     <script>
         let uploadedFile = null;
+        let pdfCache = [];
         const statusLabels = {
             closed_beta: '클로즈베타',
             open_beta: '오픈베타',
@@ -580,6 +664,7 @@
                     loadAnalytics()
                 ]);
                 loadPDFs();
+                loadWaitlist();
                 checkHealth();
             } catch (error) {
                 console.error('Dashboard init error:', error);
@@ -893,6 +978,7 @@
                 const data = await response.json();
                 
                 if (response.ok && data.pdfs) {
+                    pdfCache = data.pdfs;
                     pdfCount.textContent = data.pdfs.length;
                     
                     if (data.pdfs.length === 0) {
@@ -901,14 +987,18 @@
                         data.pdfs.forEach(pdf => {
                             const li = document.createElement('li');
                             li.className = 'pdf-item';
+                            const subjectLabel = pdf.subject_name
+                                ? `<div class="pdf-subject">📘 ${pdf.subject_name}</div>`
+                                : '';
                             li.innerHTML = `
                                 <div class="pdf-info">
                                     <div class="pdf-name">${pdf.original_filename}</div>
+                                    ${subjectLabel}
                                     <div class="pdf-meta">${(pdf.size / 1024 / 1024).toFixed(2)} MB • ${new Date(pdf.uploaded_at).toLocaleString()}</div>
                                 </div>
                                 <div class="pdf-actions">
-                                    <button class="btn-small btn-primary" onclick="generateExam('${pdf.file_id}')">Generate Exam</button>
-                                    <button class="btn-small btn-danger" onclick="deletePDF('${pdf.file_id}')">Delete</button>
+                                    <button class="btn-small btn-primary" onclick="generateExam('${pdf.file_id}', '${pdf.subject_id || ''}')">Generate Exam</button>
+                                    <button class="btn-small btn-danger" onclick="deletePDF('${pdf.file_id}', '${pdf.subject_id || ''}')">Delete</button>
                                 </div>
                             `;
                             pdfList.appendChild(li);
@@ -921,14 +1011,115 @@
                 pdfLoading.style.display = 'none';
             }
         }
+
+        async function loadWaitlist() {
+            const list = document.getElementById('waitlistList');
+            const emptyState = document.getElementById('waitlistEmpty');
+            list.innerHTML = '';
+            emptyState.style.display = 'none';
+
+            try {
+                const response = await fetch('/admin/api/waitlist');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || 'Failed to load waitlist');
+                }
+
+                if (!data.entries || data.entries.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                data.entries.forEach(entry => {
+                    const item = document.createElement('div');
+                    item.className = 'waitlist-item';
+                    const requestedAt = entry.requested_at ? new Date(entry.requested_at).toLocaleString() : '-';
+                    const note = entry.note ? entry.note : '추가 메시지 없음';
+                    const statusLabel = entry.status === 'approved' ? '승인 완료' : '대기 중';
+                    const actions = entry.status === 'pending'
+                        ? `
+                            <button class="btn-small btn-primary" onclick="approveWaitlist('${entry.entry_id}')">승인</button>
+                            <button class="btn-small btn-danger" onclick="rejectWaitlist('${entry.entry_id}')">거절</button>
+                          `
+                        : '<span class="text-sm text-gray-400">처리 완료</span>';
+
+                    item.innerHTML = `
+                        <div>
+                            <div class="waitlist-email">${entry.email}</div>
+                            <div class="waitlist-note">${note}</div>
+                        </div>
+                        <div>
+                            <span class="status-badge ${entry.status}">${statusLabel}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">${requestedAt}</div>
+                        <div class="pdf-actions">
+                            ${actions}
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                showMessage('waitlistMessage', '대기열을 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
+            }
+        }
+
+        async function approveWaitlist(entryId) {
+            if (!confirm('해당 이메일을 허용 목록에 추가하시겠습니까?')) return;
+            try {
+                const response = await fetch('/admin/api/waitlist/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ entry_id: entryId })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || '승인에 실패했습니다.');
+                }
+                showMessage('waitlistMessage', '승인 완료! 허용 이메일 목록이 갱신되었습니다.', 'success');
+                await loadWaitlist();
+                await fetchSession();
+            } catch (error) {
+                showMessage('waitlistMessage', error.message, 'error');
+            }
+        }
+
+        async function rejectWaitlist(entryId) {
+            if (!confirm('해당 요청을 대기열에서 제거하시겠습니까?')) return;
+            try {
+                const response = await fetch('/admin/api/waitlist/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ entry_id: entryId })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || '거절에 실패했습니다.');
+                }
+                showMessage('waitlistMessage', data.message || '요청이 삭제되었습니다.', 'success');
+                loadWaitlist();
+            } catch (error) {
+                showMessage('waitlistMessage', error.message, 'error');
+            }
+        }
         
-        async function deletePDF(fileId) {
+        async function deletePDF(fileId, subjectId) {
             if (!confirm('Are you sure you want to delete this PDF?')) return;
             
             try {
-                const response = await fetch(`/api/pdf/${fileId}`, {
+                let response = await fetch(`/api/pdf/${fileId}`, {
                     method: 'DELETE'
                 });
+                
+                if (response.status === 404 && subjectId) {
+                    response = await fetch(`/api/subjects/${subjectId}/pdfs/${fileId}`, {
+                        method: 'DELETE'
+                    });
+                }
                 
                 if (response.ok) {
                     showMessage('pdfMessage', 'PDF deleted successfully', 'success');
@@ -942,15 +1133,20 @@
             }
         }
         
-        async function generateExam(pdfId) {
+        async function generateExam(pdfId, subjectId) {
+            if (!subjectId) {
+                alert('이 PDF에 연결된 과목을 찾을 수 없습니다. 최신 목록으로 다시 시도해주세요.');
+                loadPDFs();
+                return;
+            }
             try {
-                const response = await fetch('/api/exam/generate', {
+                const response = await fetch(`/api/subjects/${subjectId}/exams/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        pdf_id: pdfId,
+                        pdf_ids: [pdfId],
                         num_questions: 10,
                         difficulty: 'medium'
                     })
@@ -959,7 +1155,8 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('Exam generated successfully!\n\nExam ID: ' + data.exam_id);
+                    const jobId = data.job?.job_id || data.job_id || 'pending';
+                    alert('시험 생성 작업이 큐에 등록되었습니다.\n\nJob ID: ' + jobId);
                 } else {
                     alert('Exam generation failed: ' + (data.error || 'Unknown error'));
                 }

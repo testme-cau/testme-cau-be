@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -73,31 +73,70 @@ body {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .animate-gradient {
     background-size: 200% 200%;
     animation: gradient 8s ease infinite;
   }
-  
+
   @keyframes gradient {
-    0%, 100% {
+    0%,
+    100% {
       background-position: 0% 50%;
     }
     50% {
       background-position: 100% 50%;
     }
   }
-  
+
   .bg-brand-gradient {
     @apply bg-gradient-to-br from-primary-50 via-primary-50 to-secondary-50;
   }
-  
+
   .text-brand-gradient {
     @apply bg-gradient-to-r from-primary-600 to-secondary-600 text-transparent bg-clip-text;
   }
+
+  @keyframes float-orb {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(6%, -8%, 0) scale(1.15);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      opacity: 0.35;
+      transform: scale(0.95);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.05);
+    }
+    100% {
+      opacity: 0.35;
+      transform: scale(0.95);
+    }
+  }
+
+  .glow-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(50px);
+    opacity: 0.55;
+    animation: float-orb 12s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .pulse-ring {
+    animation: pulse-ring 3.5s ease-in-out infinite;
+  }
 }
-
-
 
 @layer base {
   * {
@@ -107,4 +146,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
