@@ -1,8 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { auth } from '@/lib/firebase';
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://testmeapi.jdn.kr';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const DEV_AUTH_TOKEN =
   process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
 const FORCE_DEV_AUTH =
@@ -25,12 +24,12 @@ apiClient.interceptors.request.use(
       typeof window !== 'undefined' &&
       sessionStorage.getItem('dev-logged-in') === 'true';
     const useDevBypass = devLoggedIn || FORCE_DEV_AUTH;
-    
+
     if (isDev && useDevBypass) {
       config.headers.Authorization = `Bearer ${DEV_AUTH_TOKEN}`;
       return config;
     }
-    
+
     // Production mode: Use Firebase Auth
     const user = auth.currentUser;
     if (user) {
@@ -55,11 +54,11 @@ apiClient.interceptors.response.use(
     if (error.response) {
       // Server responded with error
       const { status, data } = error.response;
-      
+
       if (status === 401) {
         // 개발 모드에서는 401 리다이렉트 비활성화
         const isDev = process.env.NODE_ENV === 'development';
-        
+
         if (!isDev && typeof window !== 'undefined') {
           // 프로덕션에서만 로그인 페이지로 리다이렉트
           window.location.href = '/login';
@@ -75,7 +74,7 @@ apiClient.interceptors.response.use(
           window.location.href = '/waitlist?reason=beta';
         }
       }
-      
+
       // Return error message from server
       return Promise.reject(new Error(data.message || data.error || 'An error occurred'));
     } else if (error.request) {

@@ -42,13 +42,18 @@ fi
 case "$cmd" in
   start)
     require_plist
+    launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
     launchctl kickstart -k "gui/$(id -u)/${LABEL}"
     echo "✅ ${LABEL} kickstart 완료"
     ;;
   stop)
     require_plist
-    launchctl bootout "gui/$(id -u)" "$PLIST"
-    echo "🛑 ${LABEL} 중지 완료"
+    if launchctl print "gui/$(id -u)/${LABEL}" >/dev/null 2>&1; then
+      launchctl bootout "gui/$(id -u)" "$PLIST"
+      echo "🛑 ${LABEL} 중지 완료"
+    else
+      echo "ℹ️  ${LABEL} 는 이미 중지 상태입니다."
+    fi
     ;;
   reload)
     require_plist

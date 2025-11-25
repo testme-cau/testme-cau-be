@@ -24,7 +24,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development';
+const enableDevLogin =
+  process.env.NODE_ENV === 'development' &&
+  process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
   const betaStatusLoaded = betaStatus !== null;
   const isClosedBeta = betaStatus?.status === 'closed_beta';
   const allowedEmails = betaStatus?.allowed_emails?.map((email) => email.toLowerCase()) ?? [];
@@ -76,6 +79,14 @@ export default function LoginPage() {
   };
 
   const handleDevLogin = async () => {
+    if (!enableDevLogin) {
+      toast({
+        title: "비활성화된 기능",
+        description: "현재 환경에서는 개발자 로그인을 사용할 수 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     console.log('[handleDevLogin] 개발자 모드 활성화');
     setLoading(true);
     
@@ -430,7 +441,7 @@ export default function LoginPage() {
                 </Button>
 
                 {/* 개발 모드 전용 로그인 버튼 */}
-                {isDev && (
+                {enableDevLogin && (
                   <Button
                     type="button"
                     size="lg"

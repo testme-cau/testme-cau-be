@@ -33,6 +33,7 @@ fi
 
 export PORT="$PORT"
 export NEXT_PUBLIC_API_URL="$API_URL"
+export NEXT_PUBLIC_ENABLE_DEV_LOGIN="false"
 
 echo "🚀 Next.js 스테이징 서버 시작 (port=$PORT, env=$ENV_FILE, api=$API_URL)"
 echo "    중지: Ctrl+C"

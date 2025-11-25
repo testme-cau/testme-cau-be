@@ -23,6 +23,8 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 NEXT_PUBLIC_FORCE_DEV_AUTH=true
 # Override if you change backend dev token
 NEXT_PUBLIC_DEV_AUTH_TOKEN=dev-token-123
+# Enable 개발자 로그인 버튼 (local dev only; staging에서는 false 유지)
+NEXT_PUBLIC_ENABLE_DEV_LOGIN=true
 ```
 
 ## 실행 방법
