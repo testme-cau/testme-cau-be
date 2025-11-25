@@ -11,6 +11,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 FRONTEND_DIR="$PROJECT_ROOT/web-frontend"
 ENV_FILE="${ENV_FILE:-$FRONTEND_DIR/.env.staging}"
 PORT="${PORT:-13001}"
+API_URL="${NEXT_PUBLIC_API_URL:-https://testmeapi.jdn.kr}"
 
 if [ ! -d "$FRONTEND_DIR" ]; then
   echo "❌ web-frontend 디렉토리를 찾을 수 없습니다: $FRONTEND_DIR"
@@ -31,8 +32,9 @@ if [ ! -d "node_modules" ]; then
 fi
 
 export PORT="$PORT"
+export NEXT_PUBLIC_API_URL="$API_URL"
 
-echo "🚀 Next.js 스테이징 서버 시작 (port=$PORT, env=$ENV_FILE)"
+echo "🚀 Next.js 스테이징 서버 시작 (port=$PORT, env=$ENV_FILE, api=$API_URL)"
 echo "    중지: Ctrl+C"
 echo ""
 

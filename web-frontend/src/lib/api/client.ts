@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { auth } from '@/lib/firebase';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://testmeapi.jdn.kr';
 const DEV_AUTH_TOKEN =
   process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
 const FORCE_DEV_AUTH =

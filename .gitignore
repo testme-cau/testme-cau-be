@@ -16,6 +16,7 @@ eggs/
 lib/
 lib64/
 !web-frontend/src/lib/
+!web-frontend/.env.staging.example
 parts/
 sdist/
 var/
