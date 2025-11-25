@@ -7,6 +7,8 @@ const DEV_AUTH_TOKEN =
   process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
 const FORCE_DEV_AUTH =
   process.env.NEXT_PUBLIC_FORCE_DEV_AUTH === 'true';
+const ENABLE_DEV_LOGIN =
+  process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
 
 // Mock user for development
 const createMockUser = (): Partial<User> => ({
@@ -25,8 +27,10 @@ export function useAuth() {
   const [mounted, setMounted] = useState(false);
   const isDevelopment = process.env.NODE_ENV === 'development';
   const hasFirebaseConfig = Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-  const baseMockCondition = isDevelopment && !hasFirebaseConfig;
-  const shouldUseMockAuth = baseMockCondition || FORCE_DEV_AUTH;
+  const baseMockCondition =
+    ENABLE_DEV_LOGIN && isDevelopment && !hasFirebaseConfig;
+  const shouldUseMockAuth =
+    ENABLE_DEV_LOGIN && (baseMockCondition || FORCE_DEV_AUTH);
 
   useEffect(() => {
     // 클라이언트 마운트 표시
@@ -37,7 +41,9 @@ export function useAuth() {
     const devLoggedIn =
       typeof window !== 'undefined' &&
       sessionStorage.getItem('dev-logged-in') === 'true';
-    const useDevBypass = (isDevelopment && devLoggedIn) || FORCE_DEV_AUTH;
+    const useDevBypass =
+      ENABLE_DEV_LOGIN &&
+      ((isDevelopment && devLoggedIn) || FORCE_DEV_AUTH);
 
     if (shouldUseMockAuth || useDevBypass) {
       console.log('[useAuth] Development mock mode - using mock user (devLoggedIn:', devLoggedIn, ', shouldUseMockAuth:', shouldUseMockAuth, ')');

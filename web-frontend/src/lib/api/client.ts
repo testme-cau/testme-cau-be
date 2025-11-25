@@ -6,6 +6,8 @@ const DEV_AUTH_TOKEN =
   process.env.NEXT_PUBLIC_DEV_AUTH_TOKEN || 'dev-token-123';
 const FORCE_DEV_AUTH =
   process.env.NEXT_PUBLIC_FORCE_DEV_AUTH === 'true';
+const ENABLE_DEV_LOGIN =
+  process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -23,9 +25,12 @@ apiClient.interceptors.request.use(
     const devLoggedIn =
       typeof window !== 'undefined' &&
       sessionStorage.getItem('dev-logged-in') === 'true';
-    const useDevBypass = devLoggedIn || FORCE_DEV_AUTH;
+    const useDevBypass =
+      ENABLE_DEV_LOGIN &&
+      isDev &&
+      (devLoggedIn || FORCE_DEV_AUTH);
 
-    if (isDev && useDevBypass) {
+    if (useDevBypass) {
       config.headers.Authorization = `Bearer ${DEV_AUTH_TOKEN}`;
       return config;
     }
