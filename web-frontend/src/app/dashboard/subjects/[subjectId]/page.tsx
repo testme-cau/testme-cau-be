@@ -12,6 +12,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { getSubject, updateSubject } from "@/lib/api/subjects";
 import { getPDFs, uploadPDF } from "@/lib/api/pdfs";
 import {
@@ -36,6 +37,8 @@ export default function SubjectDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const isAuthReady = !!user && !authLoading;
   const subjectId = params.subjectId as string;
 
   const [activeTab, setActiveTab] = useState<"exams" | "pdfs">("exams");
@@ -61,10 +64,10 @@ export default function SubjectDetailPage() {
   const prevGradingJobCount = useRef(0);
 
   const refreshExams = useCallback(async () => {
-    if (!subjectId) return;
+    if (!subjectId || !isAuthReady) return;
     const data = await getExams(subjectId);
     setExams(data || []);
-  }, [subjectId]);
+  }, [subjectId, isAuthReady]);
 
   const storageKey = `pendingExamJobs:${subjectId}`;
 
@@ -98,7 +101,7 @@ export default function SubjectDetailPage() {
   );
 
   const fetchExamJobs = useCallback(async () => {
-    if (!subjectId) return;
+    if (!subjectId || !isAuthReady) return;
     setExamJobsLoading(true);
     try {
       const jobs = await getExamJobs(subjectId);
@@ -136,10 +139,10 @@ export default function SubjectDetailPage() {
     } finally {
       setExamJobsLoading(false);
     }
-  }, [subjectId, toast, refreshExams, readLocalExamJobs, writeLocalExamJobs]);
+  }, [subjectId, toast, refreshExams, readLocalExamJobs, writeLocalExamJobs, isAuthReady]);
 
   const fetchGradingJobs = useCallback(async () => {
-    if (!subjectId) return;
+    if (!subjectId || !isAuthReady) return;
     setGradingJobsLoading(true);
     try {
       const jobs = await getGradingJobs(subjectId);
@@ -167,10 +170,10 @@ export default function SubjectDetailPage() {
     } finally {
       setGradingJobsLoading(false);
     }
-  }, [subjectId, toast, refreshExams]);
+  }, [subjectId, toast, refreshExams, isAuthReady]);
 
   const loadData = useCallback(async () => {
-    if (!subjectId) return;
+    if (!subjectId || !isAuthReady) return;
     try {
       const [subjectData, pdfsData, groupsData] = await Promise.all([
         getSubject(subjectId),
@@ -195,11 +198,12 @@ export default function SubjectDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [subjectId, toast, fetchExamJobs, fetchGradingJobs, refreshExams]);
+  }, [subjectId, toast, fetchExamJobs, fetchGradingJobs, refreshExams, isAuthReady]);
 
   useEffect(() => {
+    if (!isAuthReady) return;
     loadData();
-  }, [loadData]);
+  }, [isAuthReady, loadData]);
 
   useEffect(() => {
     const tabParam = searchParams?.get("tab");
@@ -209,10 +213,10 @@ export default function SubjectDetailPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!subjectId) return;
+    if (!subjectId || !isAuthReady) return;
     fetchExamJobs();
     fetchGradingJobs();
-  }, [subjectId, fetchExamJobs, fetchGradingJobs]);
+  }, [subjectId, fetchExamJobs, fetchGradingJobs, isAuthReady]);
 
   useEffect(() => {
     prevExamJobCount.current = 0;
@@ -226,12 +230,12 @@ export default function SubjectDetailPage() {
   );
 
   useEffect(() => {
-    if (!activeExamJobs.length) return;
+    if (!activeExamJobs.length || !isAuthReady) return;
     const interval = setInterval(() => {
       fetchExamJobs();
     }, 5000);
     return () => clearInterval(interval);
-  }, [activeExamJobs.length, fetchExamJobs]);
+  }, [activeExamJobs.length, fetchExamJobs, isAuthReady]);
 
   const activeGradingJobs = useMemo(
     () => gradingJobs.filter((job) => job.status === "pending" || job.status === "processing"),
@@ -239,18 +243,18 @@ export default function SubjectDetailPage() {
   );
 
   useEffect(() => {
-    if (!activeGradingJobs.length) return;
+    if (!activeGradingJobs.length || !isAuthReady) return;
     const interval = setInterval(() => {
       fetchGradingJobs();
     }, 5000);
     return () => clearInterval(interval);
-  }, [activeGradingJobs.length, fetchGradingJobs]);
+  }, [activeGradingJobs.length, fetchGradingJobs, isAuthReady]);
 
   const showExamJobSection = examJobsLoading || examJobs.length > 0;
   const showGradingJobSection = gradingJobsLoading || gradingJobs.length > 0;
 
   const handleGroupChange = async (groupId: string) => {
-    if (!subject) return;
+    if (!subject || !isAuthReady) return;
     
     setUpdatingGroup(true);
     try {
@@ -281,7 +285,7 @@ export default function SubjectDetailPage() {
   };
 
   const handleCancelExamJob = async (jobId: string) => {
-    if (!subjectId) return false;
+    if (!subjectId || !isAuthReady) return false;
     try {
       await cancelExamJob(subjectId, jobId);
       setExamJobs((prev) => prev.filter((job) => job.job_id !== jobId));
@@ -323,7 +327,7 @@ export default function SubjectDetailPage() {
   };
 
   const handleFileUpload = async (files: File[]) => {
-    if (files.length === 0) return;
+    if (files.length === 0 || !isAuthReady) return;
 
     setUploading(true);
     setUploadProgress({ current: 0, total: files.length });
