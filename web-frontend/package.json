@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "dev:staging": "env-cmd -f .env.staging next dev -p 13001",
+    "build:staging": "env-cmd -f .env.staging next build",
+    "start:staging": "env-cmd -f .env.staging next start -p 13001"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -44,6 +47,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
+    "env-cmd": "^10.1.0",
     "eslint": "^8",
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.49",
