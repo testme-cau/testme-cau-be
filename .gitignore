@@ -99,7 +99,11 @@ yarn-error.log*
 .flaskenv
 backend/.env
 backend/.env.local
+backend/.env.staging
+backend/.env.production
 web-frontend/.env.local
+web-frontend/.env.staging
+web-frontend/.env.production
 
 # Keep example files
 !.env.example

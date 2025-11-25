@@ -7,7 +7,10 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable
 
+from config import settings
+
 logger = logging.getLogger(__name__)
+ENV_LABEL = (settings.environment or "development").upper()
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -28,9 +31,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         
         # Log request
+        client_host = request.client.host if request.client else "unknown"
         logger.info(
-            f"Request: {request.method} {request.url.path} "
-            f"from {request.client.host if request.client else 'unknown'}"
+            "[%s] Request: %s %s from %s",
+            ENV_LABEL,
+            request.method,
+            request.url.path,
+            client_host,
         )
         
         # Process request
@@ -46,9 +53,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         
         # Log response
         logger.info(
-            f"Response: {response.status_code} "
-            f"for {request.method} {request.url.path} "
-            f"({process_time:.3f}s)"
+            "[%s] Response: %s for %s %s (%.3fs)",
+            ENV_LABEL,
+            response.status_code,
+            request.method,
+            request.url.path,
+            process_time,
         )
         
         # Add process time to response headers
