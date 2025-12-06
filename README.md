@@ -1,92 +1,186 @@
 # test.me - AI-Powered Exam Generation Platform
 
-AI 기반 시험 생성 및 채점 플랫폼
+**test.me** is an AI-driven platform that transforms educational materials into interactive exams. It analyzes PDF lecture notes to automatically generate customized questions and grade student answers with detailed feedback, helping students master their coursework effectively.
 
-## 프로젝트 구조
+## 🏗 Architecture
+
+The system follows a modern microservices-like architecture, separating the frontend, backend, and AI services.
+
+```mermaid
+graph TD
+    User[User / Client]
+    
+    subgraph Frontend
+        Web[Next.js Web App]
+    end
+    
+    subgraph Backend
+        API[FastAPI Backend]
+        Auth[Firebase Auth]
+        DB[(Firestore DB)]
+        Storage[Firebase Storage]
+    end
+    
+    subgraph AI_Services
+        Factory[AI Service Factory]
+        GPT[OpenAI GPT-5]
+        Gemini[Google Gemini 1.5]
+    end
+
+    User -->|Interaction| Web
+    Web -->|API Requests| API
+    Web -->|Auth| Auth
+    
+    API -->|Verify Token| Auth
+    API -->|Store/Retrieve Data| DB
+    API -->|Upload/Download PDFs| Storage
+    
+    API -->|Strategy Pattern| Factory
+    Factory -->|Select Provider| GPT
+    Factory -->|Select Provider| Gemini
+    
+    GPT -->|Analyze PDF & Gen Exam| API
+    Gemini -->|Analyze PDF & Gen Exam| API
+```
+
+### Core Workflow
+
+1.  **Authentication**: Users sign in via Firebase Authentication.
+2.  **Upload**: Lecture PDFs are uploaded to Firebase Cloud Storage.
+3.  **Generation**: The backend sends the PDF context to the selected AI provider (GPT-5 or Gemini).
+4.  **Assessment**: The AI generates questions based on the content.
+5.  **Grading**: Student answers are evaluated by the AI against the source material for accuracy.
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+*   **Framework**: FastAPI (Python 3.11+)
+*   **Database**: Google Cloud Firestore (NoSQL)
+*   **Storage**: Firebase Cloud Storage
+*   **Authentication**: Firebase Admin SDK
+*   **AI Integration**: OpenAI (GPT-5/4o), Google Generative AI (Gemini 1.5 Pro)
+*   **Testing**: pytest
+
+### Frontend
+*   **Framework**: Next.js 14 (App Router)
+*   **Language**: TypeScript
+*   **Styling**: Tailwind CSS, shadcn/ui
+*   **State Management**: Zustand
+*   **Validation**: Zod + React Hook Form
+*   **Internationalization**: next-intl
+
+---
+
+## 📂 Project Structure
 
 ```
 testme/
-├── backend/          # FastAPI 백엔드
-│   ├── main.py
+├── backend/           # FastAPI Application
 │   ├── app/
-│   ├── tests/
-│   └── README.md
+│   │   ├── models/    # Pydantic Data Models
+│   │   ├── routes/    # API Endpoints
+│   │   ├── services/  # Business Logic & AI Integrations
+│   │   └── utils/     # Helper Functions
+│   └── tests/         # Backend Tests
 │
-└── web-frontend/     # Next.js 웹 프론트엔드
-    ├── src/
-    ├── public/
-    └── package.json
+├── web-frontend/      # Next.js Application
+│   ├── src/
+│   │   ├── app/       # App Router Pages
+│   │   ├── components/# UI Components
+│   │   └── lib/       # Frontend Utilities
+│   └── public/        # Static Assets
+│
+└── scripts/           # Development Scripts
 ```
 
-## Quick Start
+---
 
-### 🚀 한 번에 실행 (권장)
+## 🚀 Getting Started
+
+### Prerequisites
+
+*   Node.js 18+ & npm
+*   Python 3.11+
+*   Firebase Project (Auth, Firestore, Storage enabled)
+*   OpenAI API Key (optional)
+*   Google AI API Key (optional)
+
+### 1. Quick Start (Recommended)
+
+Use the provided script to set up the environment and run both services.
 
 ```bash
-# 초기 설정 (최초 1회만)
+# Setup environment (run once)
 ./scripts/setup-dev.sh
 
-# 개발 서버 실행
+# Start development servers
 ./scripts/dev.sh
 
-# 서버 종료
+# Stop servers
 ./scripts/stop-dev.sh
 ```
 
-### 개별 실행
+### 2. Manual Setup
 
-#### 백엔드 (FastAPI)
+#### Backend
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python main.py
-```
+1.  Navigate to the backend directory:
+    ```bash
+    cd backend
+    ```
+2.  Create and activate a virtual environment:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # Windows: venv\Scripts\activate
+    ```
+3.  Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  Configure environment:
+    *   Copy `.env.example` to `.env` and fill in your API keys.
+    *   Place your `serviceAccountKey.json` from Firebase in the `backend/` root.
+5.  Run the server:
+    ```bash
+    python main.py
+    ```
+    *   API: http://localhost:5000
+    *   Docs: http://localhost:5000/docs
 
-백엔드 API: http://localhost:5000  
-API 문서: http://localhost:5000/docs
+#### Frontend
 
-#### 웹 프론트엔드 (Next.js)
+1.  Navigate to the frontend directory:
+    ```bash
+    cd web-frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Configure environment:
+    *   Create `.env.local` based on your Firebase configuration.
+4.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+    *   App: http://localhost:3000
 
-```bash
-cd web-frontend
-npm install
-npm run dev
-```
+---
 
-프론트엔드: http://localhost:3000
+## 🤖 AI Strategy & Customization
 
-## 기술 스택
+The backend implements a **Strategy Pattern** for AI services, allowing seamless switching between providers.
 
-### 백엔드
-- FastAPI 0.109.0
-- Python 3.11+
-- Firebase (Auth, Firestore, Storage)
-- OpenAI GPT-5 / Google Gemini
+*   **Providers**: Currently supports `GPTService` (OpenAI) and `GeminiService` (Google).
+*   **Selection**: Clients can specify the preferred provider via query parameters (e.g., `?ai_provider=gemini`).
+*   **Extensibility**: New providers can be added by implementing the `AIServiceInterface`.
 
-### 프론트엔드
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Firebase Auth
+To configure the default provider, update `DEFAULT_AI_PROVIDER` in `backend/.env`.
 
-## 주요 기능
+---
 
-- 🔐 Firebase OAuth 2.0 인증
-- 📄 PDF 업로드 및 관리
-- 🤖 AI 기반 시험 문제 생성 (GPT/Gemini 선택 가능)
-- ✅ 자동 채점 및 피드백
-- 📊 시험 결과 분석
+## 📜 License
 
-## 개발 문서
-
-- Backend: `backend/AGENTS.md`, `backend/README.md`
-- Frontend: `web-frontend/README.md` (생성 예정)
-
-## 라이선스
-
-MIT License
-
+This project is licensed under the MIT License.
