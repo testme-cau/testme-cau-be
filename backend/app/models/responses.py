@@ -342,6 +342,12 @@ class GradingResponse(BaseModel):
     question_results: List[QuestionResult]
     ai_provider: Optional[str] = None
     
+    # Overall assessment
+    overall_feedback: Optional[str] = None  # 전체 총평
+    strengths: Optional[List[str]] = None   # 잘한 점
+    weaknesses: Optional[List[str]] = None  # 약점
+    study_recommendations: Optional[List[str]] = None  # 학습 권장사항
+    
     class Config:
         schema_extra = {
             "example": {
@@ -358,7 +364,11 @@ class GradingResponse(BaseModel):
                         "is_correct": True
                     }
                 ],
-                "ai_provider": "gpt"
+                "ai_provider": "gpt",
+                "overall_feedback": "전반적으로 우수한 성적입니다.",
+                "strengths": ["데이터베이스 설계 이해도가 높음"],
+                "weaknesses": ["SQL 쿼리 최적화 부분 보완 필요"],
+                "study_recommendations": ["인덱싱 전략 심화 학습 권장"]
             }
         }
 

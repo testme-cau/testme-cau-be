@@ -164,6 +164,12 @@ export interface GradingResult {
   percentage: number;
   question_results: QuestionResult[];
   ai_provider?: string;
+  
+  // Overall assessment
+  overall_feedback?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  study_recommendations?: string[];
 }
 
 export interface SubmissionResult {

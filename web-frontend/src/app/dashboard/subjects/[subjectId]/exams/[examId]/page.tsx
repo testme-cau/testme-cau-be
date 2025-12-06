@@ -14,7 +14,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { getExam, submitExam, getSubmission, getGradingJobs } from "@/lib/api/exams";
 import { Exam, SubmissionResult } from "@/types/api";
-import { ArrowLeft, Clock, AlertCircle, CheckCircle, Award, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Award, TrendingUp, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, MessageSquareQuote } from "lucide-react";
 import { MathText } from "@/components/ui/math-text";
 
 export default function ExamPage() {
@@ -396,6 +396,92 @@ export default function ExamPage() {
                 </div>
               </div>
             </Card>
+
+            {/* AI Analysis Report */}
+            {(grading_result.overall_feedback || grading_result.strengths || grading_result.weaknesses) && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">AI 분석 리포트</h2>
+                
+                {/* Overall Feedback */}
+                {grading_result.overall_feedback && (
+                  <Card className="p-6 bg-slate-50 border-slate-200">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <MessageSquareQuote className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="space-y-2 w-full">
+                        <h3 className="font-semibold text-lg">종합 평가</h3>
+                        <div className="text-gray-700 leading-relaxed">
+                          <MathText text={grading_result.overall_feedback} />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                <div className="grid gap-6 md:grid-cols-3">
+                  {/* Strengths */}
+                  {grading_result.strengths && grading_result.strengths.length > 0 && (
+                    <Card className="p-6 border-emerald-100 bg-emerald-50/30">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-emerald-100 rounded-lg">
+                          <ThumbsUp className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <h3 className="font-semibold text-emerald-900">강점</h3>
+                      </div>
+                      <ul className="space-y-3">
+                        {grading_result.strengths.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-emerald-800">
+                            <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {/* Weaknesses */}
+                  {grading_result.weaknesses && grading_result.weaknesses.length > 0 && (
+                    <Card className="p-6 border-rose-100 bg-rose-50/30">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-rose-100 rounded-lg">
+                          <AlertCircle className="h-5 w-5 text-rose-600" />
+                        </div>
+                        <h3 className="font-semibold text-rose-900">보완할 점</h3>
+                      </div>
+                      <ul className="space-y-3">
+                        {grading_result.weaknesses.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-rose-800">
+                            <div className="h-1.5 w-1.5 mt-1.5 rounded-full bg-rose-400 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {/* Recommendations */}
+                  {grading_result.study_recommendations && grading_result.study_recommendations.length > 0 && (
+                    <Card className="p-6 border-indigo-100 bg-indigo-50/30">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-indigo-100 rounded-lg">
+                          <Lightbulb className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <h3 className="font-semibold text-indigo-900">학습 가이드</h3>
+                      </div>
+                      <ul className="space-y-3">
+                        {grading_result.study_recommendations.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-indigo-800">
+                            <div className="h-1.5 w-1.5 mt-1.5 rounded-full bg-indigo-400 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Question Results */}
             <div className="space-y-6">
