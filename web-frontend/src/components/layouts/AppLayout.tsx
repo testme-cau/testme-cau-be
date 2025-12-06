@@ -89,7 +89,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       window.addEventListener("groupsUpdated", handleGroupsUpdated);
       window.addEventListener("subjectsUpdated", handleSubjectsUpdated);
     }
-    
+
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("groupsUpdated", handleGroupsUpdated);
@@ -226,7 +226,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="fixed inset-0 flex overflow-hidden bg-gray-50">
       {/* Sidebar */}
       <Sidebar
         sidebarOpen={sidebarOpen}
