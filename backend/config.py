@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     google_api_key: str | None = Field(default=None, alias="GOOGLE_API_KEY")
     google_model: str = Field(default="gemini-2.5-pro", alias="GOOGLE_MODEL")
-    default_ai_provider: str = Field(default="gpt", alias="DEFAULT_AI_PROVIDER")
+    default_ai_provider: str = Field(default="gemini", alias="DEFAULT_AI_PROVIDER")
     
     # Exam history / personalization
     exam_history_limit: int = Field(default=30, alias="EXAM_HISTORY_LIMIT")

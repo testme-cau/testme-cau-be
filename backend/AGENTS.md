@@ -128,7 +128,7 @@ be/
 | `OPENAI_MODEL`                    | No       | `gpt-5`                  | OpenAI model name                                     |
 | `GOOGLE_API_KEY`                  | No       | -                        | Google AI API key (for Gemini)                        |
 | `GOOGLE_MODEL`                    | No       | `gemini-2.5-pro`         | Gemini model name                                     |
-| `DEFAULT_AI_PROVIDER`             | No       | `gpt`                    | Default AI provider: gpt or gemini                    |
+| `DEFAULT_AI_PROVIDER`             | No       | `gemini`                 | Default AI provider: gpt or gemini                    |
 | `CORS_ORIGINS`                    | No       | `*`                      | Comma-separated CORS origins                          |
 | `EXAM_HISTORY_LIMIT`              | No       | `30`                     | Max graded submissions to analyze per PDF set         |
 | `EXAM_HISTORY_PER_TOPIC`          | No       | `3`                      | Max context items to keep per topic                   |

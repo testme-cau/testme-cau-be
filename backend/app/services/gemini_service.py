@@ -49,20 +49,20 @@ class GeminiService(AIServiceInterface):
                             "id": {"type": "integer"},
                             "question": {"type": "string"},
                             "type": {"type": "string", "enum": ["multiple_choice", "short_answer", "essay"]},
-                            "options": {"type": ["array", "null"], "items": {"type": "string"}},
+                            "options": {"type": "array", "items": {"type": "string"}},
                             "points": {"type": "integer"},
                             "topic": {"type": "string"},
-                            "correct_answer": {"type": ["string", "null"]},
+                            "correct_answer": {"type": "string"},
                             "model_answer": {"type": "string"},
-                            "keywords": {"type": ["array", "null"], "items": {"type": "string"}},
+                            "keywords": {"type": "array", "items": {"type": "string"}},
                             "scoring_rubric": {
-                                "type": ["array", "null"],
+                                "type": "array",
                                 "items": {
                                     "type": "object",
                                     "properties": {
                                         "criterion": {"type": "string"},
                                         "points": {"type": "number"},
-                                        "example": {"type": ["string", "null"]}
+                                        "example": {"type": "string"}
                                     },
                                     "required": ["criterion", "points"]
                                 }
@@ -133,13 +133,23 @@ class GeminiService(AIServiceInterface):
             Dict with success status and exam data
         """
         try:
-            # Upload PDF to Gemini
-            pdf_file = io.BytesIO(pdf_bytes)
-            uploaded_file = await self._run_blocking(
-                genai.upload_file,
-                pdf_file,
-                mime_type='application/pdf'
-            )
+            # Upload PDF to Gemini using temporary file
+            import tempfile
+            import os
+            
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+                temp_pdf.write(pdf_bytes)
+                temp_pdf_path = temp_pdf.name
+
+            try:
+                uploaded_file = await self._run_blocking(
+                    genai.upload_file,
+                    temp_pdf_path,
+                    mime_type='application/pdf'
+                )
+            finally:
+                if os.path.exists(temp_pdf_path):
+                    os.unlink(temp_pdf_path)
             
             self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name}")
             
@@ -311,17 +321,32 @@ class GeminiService(AIServiceInterface):
             Dict with success status and exam data
         """
         try:
-            # Upload all PDFs to Gemini
+            # Upload all PDFs to Gemini using temporary files
+            import tempfile
+            import os
+            
             uploaded_files = []
-            for pdf_bytes, original_filename in pdf_bytes_list:
-                pdf_file = io.BytesIO(pdf_bytes)
-                uploaded_file = await self._run_blocking(
-                    genai.upload_file,
-                    pdf_file,
-                    mime_type='application/pdf'
-                )
-                uploaded_files.append(uploaded_file)
-                self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name} ({original_filename})")
+            temp_file_paths = []
+            
+            try:
+                for pdf_bytes, original_filename in pdf_bytes_list:
+                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+                        temp_pdf.write(pdf_bytes)
+                        temp_pdf_path = temp_pdf.name
+                        temp_file_paths.append(temp_pdf_path)
+                    
+                    uploaded_file = await self._run_blocking(
+                        genai.upload_file,
+                        temp_pdf_path,
+                        mime_type='application/pdf'
+                    )
+                    uploaded_files.append(uploaded_file)
+                    self.logger.info(f"Uploaded PDF to Gemini: {uploaded_file.name} ({original_filename})")
+            finally:
+                # Clean up temp files
+                for path in temp_file_paths:
+                    if os.path.exists(path):
+                        os.unlink(path)
             
             # Get language name
             from app.utils.language_utils import get_language_name
@@ -501,13 +526,23 @@ class GeminiService(AIServiceInterface):
             from app.utils.language_utils import get_language_name
             lang_name = get_language_name(language)
 
-            # Upload PDF to Gemini
-            pdf_file = io.BytesIO(pdf_bytes)
-            uploaded_file = await self._run_blocking(
-                genai.upload_file,
-                pdf_file,
-                mime_type='application/pdf'
-            )
+            # Upload PDF to Gemini using temporary file
+            import tempfile
+            import os
+            
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+                temp_pdf.write(pdf_bytes)
+                temp_pdf_path = temp_pdf.name
+
+            try:
+                uploaded_file = await self._run_blocking(
+                    genai.upload_file,
+                    temp_pdf_path,
+                    mime_type='application/pdf'
+                )
+            finally:
+                if os.path.exists(temp_pdf_path):
+                    os.unlink(temp_pdf_path)
             
             self.logger.info(f"Uploaded PDF for grading to Gemini: {uploaded_file.name}")
             

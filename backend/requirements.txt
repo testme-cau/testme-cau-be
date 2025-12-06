@@ -22,7 +22,7 @@ python-dateutil==2.9.0
 
 # AI Integration
 openai>=1.0.0
-google-generativeai==0.3.2
+google-generativeai>=0.7.0
 
 # 보안/비밀번호 해싱
 bcrypt==4.2.0
