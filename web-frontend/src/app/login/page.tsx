@@ -305,20 +305,6 @@ const enableDevLogin =
                 </div>
               </motion.div>
             </div>
-
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full bg-primary-200 border-2 border-white"></div>
-                <div className="w-8 h-8 rounded-full bg-secondary-200 border-2 border-white"></div>
-                <div className="w-8 h-8 rounded-full bg-accent-200 border-2 border-white"></div>
-                <div className="w-8 h-8 rounded-full bg-primary-300 border-2 border-white flex items-center justify-center text-xs font-medium">
-                  +
-                </div>
-              </div>
-              <p>
-                <span className="font-semibold text-gray-700">1,000명+</span>이 이미 사용 중
-              </p>
-            </div>
           </motion.div>
 
           {/* Right Side - Login Card */}
