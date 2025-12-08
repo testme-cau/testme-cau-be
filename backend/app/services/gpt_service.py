@@ -256,7 +256,8 @@ class GPTService(AIServiceInterface):
                 "TITLE GENERATION:\n"
                 "Create a concise, descriptive title that summarizes the main topics/subjects covered in the PDF.\n"
                 f"Title should be clear, specific, and in {lang_name} (max 50 characters).\n"
-                "Example: 'Kotlin 기초 및 Android 컴포넌트'\n\n"
+                f"STRICT PROHIBITION: If {lang_name} is English, the title MUST NOT contain any Korean characters (Hangul) or the character '및'. Use 'and' for conjunctions.\n"
+                "Example: 'Introduction to Kotlin and Android Components'\n\n"
                 
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
@@ -373,6 +374,10 @@ class GPTService(AIServiceInterface):
                     else:
                         raise ValueError(f"Could not parse JSON from response: {response_content[:200]}")
                 
+                # Post-processing: Fix common translation issues (unconditional removal of '및' as requested)
+                if 'title' in exam_data:
+                    exam_data['title'] = exam_data['title'].replace(" 및 ", ", ").replace(" 및", ", ").replace("및", ", ")
+                
                 # Cleanup
                 await self.client.files.delete(file_id)
                 await self.client.beta.assistants.delete(assistant.id)
@@ -456,7 +461,8 @@ class GPTService(AIServiceInterface):
                 "TITLE GENERATION:\n"
                 f"Create a comprehensive title that synthesizes the main topics from ALL {len(pdf_bytes_list)} PDFs.\n"
                 f"Title should reflect the combined scope of all materials and be in {lang_name} (max 50 characters).\n"
-                "Example: 'Kotlin 기초 및 Android Grammar 종합'\n\n"
+                f"STRICT PROHIBITION: If {lang_name} is English, the title MUST NOT contain any Korean characters (Hangul) or the character '및'. Use 'and' for conjunctions.\n"
+                "Example: 'Comprehensive Kotlin and Android Grammar'\n\n"
                 
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
@@ -571,6 +577,10 @@ class GPTService(AIServiceInterface):
                         exam_data = json.loads(match.group(0))
                     else:
                         raise ValueError(f"Could not parse JSON from response: {response_content[:200]}")
+                
+                # Post-processing: Fix common translation issues (unconditional removal of '및' as requested)
+                if 'title' in exam_data:
+                    exam_data['title'] = exam_data['title'].replace(" 및 ", ", ").replace(" 및", ", ").replace("및", ", ")
                 
                 # Cleanup - delete all uploaded files
                 for file_id in file_ids:

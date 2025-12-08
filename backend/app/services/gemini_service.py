@@ -49,12 +49,12 @@ class GeminiService(AIServiceInterface):
                             "id": {"type": "integer"},
                             "question": {"type": "string"},
                             "type": {"type": "string", "enum": ["multiple_choice", "short_answer", "essay"]},
-                            "options": {"type": "array", "items": {"type": "string"}},
+                            "options": {"type": "array", "items": {"type": "string"}, "nullable": True},
                             "points": {"type": "integer"},
                             "topic": {"type": "string"},
-                            "correct_answer": {"type": "string"},
+                            "correct_answer": {"type": "string", "nullable": True},
                             "model_answer": {"type": "string"},
-                            "keywords": {"type": "array", "items": {"type": "string"}},
+                            "keywords": {"type": "array", "items": {"type": "string"}, "nullable": True},
                             "scoring_rubric": {
                                 "type": "array",
                                 "items": {
@@ -62,10 +62,11 @@ class GeminiService(AIServiceInterface):
                                     "properties": {
                                         "criterion": {"type": "string"},
                                         "points": {"type": "number"},
-                                        "example": {"type": "string"}
+                                        "example": {"type": "string", "nullable": True}
                                     },
                                     "required": ["criterion", "points"]
-                                }
+                                },
+                                "nullable": True
                             }
                         },
                         "required": ["id", "question", "type", "points", "model_answer"]
@@ -176,7 +177,8 @@ class GeminiService(AIServiceInterface):
                 "TITLE GENERATION:\n"
                 "Create a concise, descriptive title that summarizes the main topics/subjects covered in the PDF.\n"
                 f"Title should be clear, specific, and in {lang_name} (max 50 characters).\n"
-                "Example: 'Kotlin 기초 및 Android 컴포넌트'\n\n"
+                f"STRICT PROHIBITION: If {lang_name} is English, the title MUST NOT contain any Korean characters (Hangul) or the character '및'. Use 'and' for conjunctions.\n"
+                "Example: 'Introduction to Kotlin and Android Components'\n\n"
                 
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
@@ -284,6 +286,11 @@ class GeminiService(AIServiceInterface):
                 else:
                     raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
             
+            # Post-processing: Fix common translation issues (unconditional removal of '및' as requested)
+            if 'title' in exam_data:
+                import re
+                exam_data['title'] = re.sub(r'\s*및\s*', ', ', exam_data['title'])
+            
             # Delete uploaded file
             await self._run_blocking(genai.delete_file, uploaded_file.name)
             
@@ -372,7 +379,8 @@ class GeminiService(AIServiceInterface):
                 "TITLE GENERATION:\n"
                 f"Create a comprehensive title that synthesizes the main topics from ALL {len(pdf_bytes_list)} PDFs.\n"
                 f"Title should reflect the combined scope of all materials and be in {lang_name} (max 50 characters).\n"
-                "Example: 'Kotlin 기초 및 Android Grammar 종합'\n\n"
+                f"STRICT PROHIBITION: If {lang_name} is English, the title MUST NOT contain any Korean characters (Hangul) or the character '및'. Use 'and' for conjunctions.\n"
+                "Example: 'Comprehensive Kotlin and Android Grammar'\n\n"
                 
                 "DIFFICULTY LEVELS:\n"
                 "- easy: Direct recall from material\n"
@@ -481,6 +489,11 @@ class GeminiService(AIServiceInterface):
                     exam_data = json.loads(match.group(0))
                 else:
                     raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
+            
+            # Post-processing: Fix common translation issues (unconditional removal of '및' as requested)
+            if 'title' in exam_data:
+                import re
+                exam_data['title'] = re.sub(r'\s*및\s*', ', ', exam_data['title'])
             
             # Delete all uploaded files
             for uploaded_file in uploaded_files:
