@@ -70,7 +70,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight"
+            className="text-4xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight break-keep text-balance"
           >
             {t('titlePrimary')}
             <br />
@@ -120,31 +120,6 @@ export function Hero() {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </motion.div>
-
-          {/* Social Proof */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="mt-12 flex items-center justify-center gap-6 text-sm text-gray-500"
-          >
-            <div className="flex -space-x-2">
-              <div className="w-8 h-8 rounded-full bg-primary-200 border-2 border-white"></div>
-              <div className="w-8 h-8 rounded-full bg-secondary-200 border-2 border-white"></div>
-              <div className="w-8 h-8 rounded-full bg-accent-200 border-2 border-white"></div>
-              <div className="w-8 h-8 rounded-full bg-primary-300 border-2 border-white flex items-center justify-center text-xs font-medium">
-                +
-              </div>
-            </div>
-            <p>
-              {t.rich('usage', {
-                strong: (chunks) => (
-                  <span className="font-semibold text-gray-700">{chunks}</span>
-                ),
-                count: '1,000',
-              })}
-            </p>
           </motion.div>
         </motion.div>
       </div>

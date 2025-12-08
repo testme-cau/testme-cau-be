@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Users } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
@@ -52,23 +52,6 @@ export function CTASection() {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </motion.div>
-
-          {/* Social proof */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex items-center justify-center gap-3 text-white/80"
-          >
-            <Users className="w-5 h-5" />
-            <p className="text-lg">
-              {heroT.rich('usage', {
-                strong: (chunks) => <span className="font-bold text-white">{chunks}</span>,
-                count: '1,000',
-              })}
-            </p>
           </motion.div>
 
           {/* Additional info */}
