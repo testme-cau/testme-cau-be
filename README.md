@@ -24,7 +24,7 @@ graph TD
     subgraph AI_Services
         Factory[AI Service Factory]
         GPT[OpenAI GPT-5]
-        Gemini[Google Gemini 1.5]
+        Gemini[Google Gemini 2.5]
     end
 
     User -->|Interaction| Web
@@ -60,7 +60,7 @@ graph TD
 *   **Database**: Google Cloud Firestore (NoSQL)
 *   **Storage**: Firebase Cloud Storage
 *   **Authentication**: Firebase Admin SDK
-*   **AI Integration**: OpenAI (GPT-5/4o), Google Generative AI (Gemini 1.5 Pro)
+*   **AI Integration**: OpenAI (GPT-5/4o), Google Generative AI (Gemini 2.5 Pro)
 *   **Testing**: pytest
 
 ### Frontend

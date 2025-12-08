@@ -44,7 +44,7 @@ User (Android App) → FastAPI API → Firebase (Auth/Storage/Firestore) → AI 
 - **google-generativeai 0.3.2**: Google Generative AI SDK
 - **Supported AI Providers**:
   - **GPT**: GPT-5 (with fallback to gpt-4.1, gpt-4o, gpt-4o-mini)
-  - **Gemini**: Gemini 1.5 Pro/Flash
+  - **Gemini**: Gemini 2.5 Pro/Flash
 - **Use Cases**:
   - Direct PDF reading and exam question generation
   - PDF-referenced answer grading with detailed feedback
@@ -672,7 +672,7 @@ MIT License - See LICENSE file for details
 **For AI Agents**: This document contains the complete technical specification
 
 **Framework**: FastAPI 0.109.0  
-**AI Providers**: GPT-5, Gemini 1.5 Pro  
+**AI Providers**: GPT-5, Gemini 2.5 Pro  
 **Architecture**: Strategy Pattern for AI abstraction
 
 Last Updated: 2025-11-06

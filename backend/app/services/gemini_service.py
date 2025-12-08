@@ -32,7 +32,7 @@ class GeminiService(AIServiceInterface):
         genai.configure(api_key=self.api_key)
         
         # Model configuration
-        self.model_name = model or os.getenv('GOOGLE_MODEL', 'gemini-1.5-pro')
+        self.model_name = model or os.getenv('GOOGLE_MODEL', 'gemini-2.5-pro')
         self.model = genai.GenerativeModel(self.model_name)
         self.logger = logging.getLogger(__name__)
         
