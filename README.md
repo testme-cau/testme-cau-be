@@ -12,6 +12,7 @@ graph TD
     
     subgraph Frontend
         Web[Next.js Web App]
+        Android[Android App]
     end
     
     subgraph Backend
@@ -28,8 +29,11 @@ graph TD
     end
 
     User -->|Interaction| Web
+    User -->|Interaction| Android
     Web -->|API Requests| API
     Web -->|Auth| Auth
+    Android -->|API Requests| API
+    Android -->|Auth| Auth
     
     API -->|Verify Token| Auth
     API -->|Store/Retrieve Data| DB
