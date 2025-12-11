@@ -1,5 +1,7 @@
 # test.me - AI-Powered Exam Generation Platform
 
+> 🚀 **Try it live — [Crush your courses with personalized practice exams](https://testme.jdn.kr)**.
+
 **test.me** is an AI-driven platform that transforms educational materials into interactive exams. It analyzes PDF lecture notes to automatically generate customized questions and grade student answers with detailed feedback, helping students master their coursework effectively.
 
 ## 🏗 Architecture
@@ -9,19 +11,19 @@ The system follows a modern microservices-like architecture, separating the fron
 ```mermaid
 graph TD
     User[User / Client]
-    
+
     subgraph Frontend
         Web[Next.js Web App]
         Android[Android App]
     end
-    
+
     subgraph Backend
         API[FastAPI Backend]
         Auth[Firebase Auth]
         DB[(Firestore DB)]
         Storage[Firebase Storage]
     end
-    
+
     subgraph AI_Services
         Factory[AI Service Factory]
         GPT[OpenAI GPT-5]
@@ -34,15 +36,15 @@ graph TD
     Web -->|Auth| Auth
     Android -->|API Requests| API
     Android -->|Auth| Auth
-    
+
     API -->|Verify Token| Auth
     API -->|Store/Retrieve Data| DB
     API -->|Upload/Download PDFs| Storage
-    
+
     API -->|Strategy Pattern| Factory
     Factory -->|Select Provider| GPT
     Factory -->|Select Provider| Gemini
-    
+
     GPT -->|Analyze PDF & Gen Exam| API
     Gemini -->|Analyze PDF & Gen Exam| API
 ```
@@ -60,20 +62,22 @@ graph TD
 ## 🛠 Tech Stack
 
 ### Backend
-*   **Framework**: FastAPI (Python 3.11+)
-*   **Database**: Google Cloud Firestore (NoSQL)
-*   **Storage**: Firebase Cloud Storage
-*   **Authentication**: Firebase Admin SDK
-*   **AI Integration**: OpenAI (GPT-5/4o), Google Generative AI (Gemini 2.5 Pro)
-*   **Testing**: pytest
+
+- **Framework**: FastAPI (Python 3.11+)
+- **Database**: Google Cloud Firestore (NoSQL)
+- **Storage**: Firebase Cloud Storage
+- **Authentication**: Firebase Admin SDK
+- **AI Integration**: OpenAI (GPT-5/4o), Google Generative AI (Gemini 2.5 Pro)
+- **Testing**: pytest
 
 ### Frontend
-*   **Framework**: Next.js 14 (App Router)
-*   **Language**: TypeScript
-*   **Styling**: Tailwind CSS, shadcn/ui
-*   **State Management**: Zustand
-*   **Validation**: Zod + React Hook Form
-*   **Internationalization**: next-intl
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui
+- **State Management**: Zustand
+- **Validation**: Zod + React Hook Form
+- **Internationalization**: next-intl
 
 ---
 
@@ -105,11 +109,11 @@ testme/
 
 ### Prerequisites
 
-*   Node.js 18+ & npm
-*   Python 3.11+
-*   Firebase Project (Auth, Firestore, Storage enabled)
-*   OpenAI API Key (optional)
-*   Google AI API Key (optional)
+- Node.js 18+ & npm
+- Python 3.11+
+- Firebase Project (Auth, Firestore, Storage enabled)
+- OpenAI API Key (optional)
+- Google AI API Key (optional)
 
 ### 1. Quick Start (Recommended)
 
@@ -144,14 +148,14 @@ Use the provided script to set up the environment and run both services.
     pip install -r requirements.txt
     ```
 4.  Configure environment:
-    *   Copy `.env.example` to `.env` and fill in your API keys.
-    *   Place your `serviceAccountKey.json` from Firebase in the `backend/` root.
+    - Copy `.env.example` to `.env` and fill in your API keys.
+    - Place your `serviceAccountKey.json` from Firebase in the `backend/` root.
 5.  Run the server:
     ```bash
     python main.py
     ```
-    *   API: http://localhost:5000
-    *   Docs: http://localhost:5000/docs
+    - API: http://localhost:5000
+    - Docs: http://localhost:5000/docs
 
 #### Frontend
 
@@ -164,12 +168,12 @@ Use the provided script to set up the environment and run both services.
     npm install
     ```
 3.  Configure environment:
-    *   Create `.env.local` based on your Firebase configuration.
+    - Create `.env.local` based on your Firebase configuration.
 4.  Run the development server:
     ```bash
     npm run dev
     ```
-    *   App: http://localhost:3000
+    - App: http://localhost:3000
 
 ---
 
@@ -177,9 +181,9 @@ Use the provided script to set up the environment and run both services.
 
 The backend implements a **Strategy Pattern** for AI services, allowing seamless switching between providers.
 
-*   **Providers**: Currently supports `GPTService` (OpenAI) and `GeminiService` (Google).
-*   **Selection**: Clients can specify the preferred provider via query parameters (e.g., `?ai_provider=gemini`).
-*   **Extensibility**: New providers can be added by implementing the `AIServiceInterface`.
+- **Providers**: Currently supports `GPTService` (OpenAI) and `GeminiService` (Google).
+- **Selection**: Clients can specify the preferred provider via query parameters (e.g., `?ai_provider=gemini`).
+- **Extensibility**: New providers can be added by implementing the `AIServiceInterface`.
 
 To configure the default provider, update `DEFAULT_AI_PROVIDER` in `backend/.env`.
 
