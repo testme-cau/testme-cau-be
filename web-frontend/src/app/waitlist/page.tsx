@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldAlert, ArrowRight, LogOut } from "lucide-react";
 
@@ -16,6 +18,14 @@ import { Logo } from "@/components/ui/logo";
 import { signOut } from "@/lib/auth";
 
 export default function WaitlistPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><LoadingSpinner /></div>}>
+      <WaitlistContent />
+    </Suspense>
+  );
+}
+
+function WaitlistContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();

@@ -68,6 +68,8 @@ export interface Subject {
   group_id?: string | null;
   color?: string | null;
   language_preference?: string | null;
+  semester?: string | null;
+  year?: string | number | null;
   pdf_count?: number;
   exam_count?: number;
   created_at: string;
@@ -214,6 +216,7 @@ export interface GradingJob {
   status: JobStatus;
   ai_provider?: 'gpt' | 'gemini';
   progress_percentage: number;
+  progress?: number | null;
   estimated_duration_seconds?: number;
   error_message?: string;
   created_at?: string;

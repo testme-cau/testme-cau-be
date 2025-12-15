@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/layouts/ProtectedRoute";
@@ -18,6 +20,14 @@ import { Plus, BookOpen, FileText, ClipboardList, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><LoadingSpinner size="lg" /></div>}>
+      <DashboardPageContent />
+    </Suspense>
+  );
+}
+
+function DashboardPageContent() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

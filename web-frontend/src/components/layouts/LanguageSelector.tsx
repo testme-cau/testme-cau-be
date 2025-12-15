@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { LanguageOption } from "@/types/api";
+import type { LanguageOption, UserProfile } from "@/types/api";
 import {
   getSupportedLanguages,
   getUserProfile,
@@ -29,7 +29,7 @@ interface LanguageSelectorProps {
 export function LanguageSelector({ className }: LanguageSelectorProps) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { execute: executeUpdate, loading: updating } = useApiRequest<void>();
+  const { execute: executeUpdate, loading: updating } = useApiRequest<UserProfile>();
   const t = useTranslations("language");
   const storeLocale = useLocaleStore((state) => state.locale);
   const setLocale = useLocaleStore((state) => state.setLocale);
